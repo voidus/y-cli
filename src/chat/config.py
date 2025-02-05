@@ -7,7 +7,9 @@ def get_default_config():
         "data_file": "~/.local/share/chat/chat.jsonl",
         "openai_api_key": os.getenv("OPENAI_API_KEY"),
         "openai_base_url": os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1"),
-        "default_model": os.getenv("MODEL", "gpt-3.5-turbo")
+        "default_model": os.getenv("MODEL", "gpt-3.5-turbo"),
+        "openrouter_import_dir": "~/.local/share/chat/openrouter_import",
+        "openrouter_import_history": "~/.local/share/chat/openrouter_import_history.jsonl"
     }
 
 def load_config():
@@ -37,8 +39,8 @@ def load_config():
     os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
 
     # network proxy settings
-    PROXY_HOST = config["proxy_host"]
-    PROXY_PORT = config["proxy_port"]
+    PROXY_HOST = config.get("proxy_host")
+    PROXY_PORT = config.get("proxy_port")
     if PROXY_HOST and PROXY_PORT:
         os.environ["http_proxy"] = f"http://{PROXY_HOST}:{PROXY_PORT}"
         os.environ["https_proxy"] = f"http://{PROXY_HOST}:{PROXY_PORT}"
@@ -51,3 +53,5 @@ config, DATA_FILE = load_config()
 OPENAI_API_KEY = config["openai_api_key"]
 OPENAI_API_BASE = config["openai_base_url"]
 DEFAULT_MODEL = config["default_model"]
+OPENROUTER_IMPORT_DIR = os.path.expanduser(config["openrouter_import_dir"])
+OPENROUTER_IMPORT_HISTORY = os.path.expanduser(config["openrouter_import_history"])

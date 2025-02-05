@@ -2,7 +2,6 @@ import json
 import os
 from typing import List, Optional, Dict
 from datetime import datetime
-import fcntl
 from .models import Chat, Message
 
 class ChatRepository:
@@ -14,30 +13,26 @@ class ChatRepository:
         """Ensure the data file exists"""
         if not os.path.exists(self.data_file):
             os.makedirs(os.path.dirname(self.data_file), exist_ok=True)
-            with open(self.data_file, 'a'):
+            with open(self.data_file, 'a', encoding="utf-8") as f:
                 pass
 
     def _read_chats(self) -> List[Chat]:
         """Read all chats from the JSONL file"""
         chats = []
         if os.path.getsize(self.data_file) > 0:
-            with open(self.data_file, 'r') as f:
-                fcntl.flock(f.fileno(), fcntl.LOCK_SH)
+            with open(self.data_file, 'r', encoding="utf-8") as f:
                 for line in f:
                     if line.strip():
                         chat_dict = json.loads(line)
                         chats.append(Chat.from_dict(chat_dict))
-                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
         return chats
 
     def _write_chats(self, chats: List[Chat]) -> None:
         """Write all chats to the JSONL file"""
-        with open(self.data_file, 'w') as f:
-            fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+        with open(self.data_file, 'w', encoding="utf-8") as f:
             for chat in chats:
                 json.dump(chat.to_dict(), f, ensure_ascii=False)
                 f.write('\n')
-            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
 
     def list_chats(self, keyword: Optional[str] = None, limit: int = 10) -> List[Chat]:
         """List chats with optional filtering

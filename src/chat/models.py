@@ -12,6 +12,7 @@ class Message:
     links: Optional[List[str]] = None
     images: Optional[List[str]] = None
     model: Optional[str] = None
+    id: Optional[str] = None
 
     @classmethod
     def from_dict(cls, data: Dict) -> 'Message':
@@ -22,7 +23,8 @@ class Message:
             source=data.get('source'),
             links=data.get('links'),
             images=data.get('images'),
-            model=data.get('model')
+            model=data.get('model'),
+            id=data.get('id')
         )
     
     def to_dict(self) -> Dict:
@@ -31,6 +33,8 @@ class Message:
             'content': self.content,
             'timestamp': self.timestamp
         }
+        if self.id is not None:
+            result['id'] = self.id
         if self.source is not None:
             result['source'] = self.source
         if self.links is not None:
@@ -54,17 +58,20 @@ class Chat:
             id=data['id'],
             create_time=data['create_time'],
             update_time=data['update_time'],
-            messages=[Message.from_dict(m) for m in data['messages']]
+            messages=sorted(
+                [Message.from_dict(m) for m in data['messages']], 
+                key=lambda x: (x.timestamp, x.role == "assistant")
+            )
         )
     
     def to_dict(self) -> Dict:
         return {
-            'id': self.id,
             'create_time': self.create_time,
+            'id': self.id,
             'update_time': self.update_time,
             'messages': [m.to_dict() for m in self.messages]
         }
     
     def update_messages(self, messages: List[Message]) -> None:
-        self.messages = messages
+        self.messages = sorted(messages, key=lambda x: (x.timestamp, x.role == "assistant"))
         self.update_time = get_iso8601_timestamp()

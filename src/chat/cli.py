@@ -1,12 +1,14 @@
 import os
 import sys
-from typing import List, Dict, Optional
+import re
+from typing import List, Dict, Optional, Tuple
 from datetime import datetime
 from tabulate import tabulate
 import wcwidth
 from dotenv import load_dotenv
 import openai
 import click
+import pyperclip
 from openai import OpenAI
 from rich.console import Console
 from rich.markdown import Markdown
@@ -45,6 +47,7 @@ class ChatApp:
         self.current_chat: Optional[Chat] = None
         self.messages: List[Dict[str, str]] = []
         self.console = Console(theme=custom_theme)
+        self.code_blocks: List[str] = []  # Store code blocks for copying
         
         if chat_id:
             # Load existing chat if chat_id provided
@@ -62,6 +65,31 @@ class ChatApp:
             self.current_chat = existing_chat
             self.console.print(f"Loaded {len(self.messages)} messages from chat {chat_id}")
 
+    def process_code_blocks(self, content: str) -> Tuple[str, List[str]]:
+        """Process code blocks in content, adding sequence numbers and copy instructions.
+        
+        Returns:
+            Tuple of (modified content, list of code blocks for copying)
+        """
+        code_blocks = []
+        start_idx = len(self.code_blocks)
+        
+        def replace_code_block(match):
+            nonlocal start_idx
+            lang = match.group(1) or ''
+            code = match.group(2).strip()
+            block_num = len(code_blocks) + start_idx + 1
+            code_blocks.append(code)
+            
+            # Format with sequence number and copy instruction
+            return f"> copy [{block_num}]\n```{lang} {code}\n```"
+        
+        # Replace code blocks with numbered versions and copy instructions
+        pattern = r'```(\w*\n|\n)?(.+?)```'
+        modified_content = re.sub(pattern, replace_code_block, content, flags=re.DOTALL)
+        
+        return modified_content, code_blocks
+
     def display_message_panel(self, msg: dict):
         """Display a message in a panel with role-colored borders.
         
@@ -70,8 +98,13 @@ class ChatApp:
         """
         timestamp = f"[timestamp]{msg['timestamp']}[/timestamp]"
         role = f"[{msg['role']}]{msg['role'].capitalize()}[/{msg['role']}]"
+        
+        # Process code blocks and update content
+        modified_content, code_blocks = self.process_code_blocks(msg['content'])
+        self.code_blocks.extend(code_blocks)
+        
         self.console.print(Panel(
-            Markdown(msg['content']),
+            Markdown(modified_content),
             title=f"{role} {timestamp}",
             border_style=msg['role']
         ))
@@ -111,7 +144,8 @@ class ChatApp:
 
     def chat(self):
         self.console.print("\n[bold]Enter 'exit' or 'quit' to end the conversation.[/bold]")
-        self.console.print("[bold]Enter your message and press Enter to send.[/bold]\n")
+        self.console.print("[bold]Enter your message and press Enter to send.[/bold]")
+        self.console.print("[bold]Use 'copy N' to copy code block N, or 'copy 0' to copy the entire last response.[/bold]\n")
         
             # Display existing messages if continuing from a previous chat
         if self.messages:
@@ -130,6 +164,29 @@ class ChatApp:
             if not user_input:
                 self.console.print("[yellow]Please enter a message.[/yellow]")
                 continue
+                
+            # Handle copy command
+            if user_input.lower().startswith('copy '):
+                try:
+                    block_num = int(user_input.split()[1])
+                    if block_num == 0:
+                        # Find last assistant message
+                        last_assistant = next((msg for msg in reversed(self.messages) 
+                                            if msg['role'] == 'assistant'), None)
+                        if last_assistant and last_assistant['content']:
+                            pyperclip.copy(last_assistant['content'].strip())
+                            self.console.print("[green]Copied last assistant message to clipboard[/green]")
+                        else:
+                            self.console.print("[yellow]No previous assistant message to copy[/yellow]")
+                    elif 1 <= block_num <= len(self.code_blocks):
+                        pyperclip.copy(self.code_blocks[block_num - 1])
+                        self.console.print(f"[green]Copied code block [{block_num}] to clipboard[/green]")
+                    else:
+                        self.console.print("[yellow]Invalid code block number[/yellow]")
+                    continue
+                except (IndexError, ValueError):
+                    self.console.print("[yellow]Invalid copy command. Use 'copy <number>' or 'copy 0' for last message[/yellow]")
+                    continue
             # Add user message to history and persist
             user_message = {"role": "user", "content": user_input, "timestamp": get_iso8601_timestamp()}
             self.messages.append(user_message)
