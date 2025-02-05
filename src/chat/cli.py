@@ -41,13 +41,14 @@ custom_theme = Theme({
 })
 
 class ChatApp:
-    def __init__(self, chat_id: Optional[str] = None):
+    def __init__(self, chat_id: Optional[str] = None, verbose: bool = False):
         self.repository = ChatRepository(DATA_FILE)
         self.service = ChatService(self.repository)
         self.current_chat: Optional[Chat] = None
         self.messages: List[Dict[str, str]] = []
         self.console = Console(theme=custom_theme)
         self.code_blocks: List[str] = []  # Store code blocks for copying
+        self.verbose = verbose
         
         if chat_id:
             # Load existing chat if chat_id provided
@@ -63,7 +64,8 @@ class ChatApp:
                 "timestamp": msg.timestamp
             } for msg in existing_chat.messages]
             self.current_chat = existing_chat
-            self.console.print(f"Loaded {len(self.messages)} messages from chat {chat_id}")
+            if self.verbose:
+                self.console.print(f"Loaded {len(self.messages)} messages from chat {chat_id}")
 
     def process_code_blocks(self, content: str) -> Tuple[str, List[str]]:
         """Process code blocks in content, adding sequence numbers and copy instructions.
@@ -110,8 +112,32 @@ class ChatApp:
         ))
     
     def get_input(self) -> str:
+        """Get user input with support for multi-line input using EOF flags.
+
+        Multi-line input starts with <<EOF and ends with EOF. For example:
+        <<EOF
+        line 1
+        line 2
+        EOF
+
+        Returns:
+            str: The user input, either single line or multiple lines joined with newlines.
+        """
         try:
-            return input("Please enter: ").strip()
+            text = input("Please enter: ").strip()
+
+            # Check for multi-line input start flag
+            if text == "<<EOF":
+                lines = []
+                while True:
+                    line = input().rstrip()
+                    if line == "EOF":
+                        break
+                    lines.append(line)
+                return "\n".join(lines)
+
+            return text
+
         except (EOFError, KeyboardInterrupt):
             self.console.print("\n[yellow]Exiting chat...[/yellow]")
             sys.exit(0)
@@ -143,11 +169,16 @@ class ChatApp:
         return "".join(collected_messages)
 
     def chat(self):
-        self.console.print("\n[bold]Enter 'exit' or 'quit' to end the conversation.[/bold]")
-        self.console.print("[bold]Enter your message and press Enter to send.[/bold]")
-        self.console.print("[bold]Use 'copy N' to copy code block N, or 'copy 0' to copy the entire last response.[/bold]\n")
+        if self.verbose:
+            self.console.print("\n[bold]Enter 'exit' or 'quit' to end the conversation.[/bold]")
+            self.console.print("[bold]Enter your message and press Enter to send.[/bold]")
+            self.console.print("[bold]For multi-line input:[/bold]")
+            self.console.print("  1. Type <<EOF and press Enter")
+            self.console.print("  2. Type your multi-line message")
+            self.console.print("  3. Type EOF and press Enter to finish")
+            self.console.print("[bold]Use 'copy N' to copy code block N, or 'copy 0' to copy the entire last response.[/bold]\n")
         
-            # Display existing messages if continuing from a previous chat
+        # Display existing messages if continuing from a previous chat
         if self.messages:
             self.console.print("\n[bold]Chat history:[/bold]")
             for msg in self.messages:
@@ -239,15 +270,17 @@ def cli():
 @cli.command()
 @click.option('--chat-id', help='Continue from an existing chat')
 @click.option('--model', help=f'OpenAI model to use (default: {DEFAULT_MODEL})')
-def chat(chat_id: Optional[str], model: Optional[str]):
+@click.option('--verbose', is_flag=True, help='Show detailed usage instructions')
+def chat(chat_id: Optional[str], model: Optional[str], verbose: bool):
     """Start a new chat conversation, optionally continuing from an existing chat."""
     console = Console(theme=custom_theme)
-    console.print(f"Using file for chat data: {DATA_FILE}")
-    console.print(f"Using OpenAI API Base URL: {OPENAI_API_BASE}")
-    console.print(f"Using model: {model or DEFAULT_MODEL}")
-    if chat_id:
-        console.print(f"Continuing from chat {chat_id}")
-    chat_app = ChatApp(chat_id)
+    if verbose:
+        console.print(f"Using file for chat data: {DATA_FILE}")
+        console.print(f"Using OpenAI API Base URL: {OPENAI_API_BASE}")
+        console.print(f"Using model: {model or DEFAULT_MODEL}")
+        if chat_id:
+            console.print(f"Continuing from chat {chat_id}")
+    chat_app = ChatApp(chat_id, verbose=verbose)
     chat_app.model = model or DEFAULT_MODEL
     chat_app.chat()
 
