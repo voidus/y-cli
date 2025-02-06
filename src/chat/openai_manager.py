@@ -47,33 +47,33 @@ class OpenAIManager:
             
         return message
 
-    def prepare_messages_for_completion(self, messages: List[Dict]) -> List[Dict]:
-        """Prepare messages for completion by adding cache_control to last user message.
+    def prepare_messages_for_completion(self, messages: List[Dict], system_message: Optional[str] = None) -> List[Dict]:
+        """Prepare messages for completion by adding system message and cache_control.
         
         Args:
             messages: Original list of message dictionaries
+            system_message: Optional system message to add at the start
             
         Returns:
-            List[Dict]: Copy of messages with cache_control added to last user message
+            List[Dict]: New message list with system message and cache_control added
         """
-        # Create a deep copy of messages
+        # Create new list starting with system message if provided
         prepared_messages = []
+        if system_message:
+            sys_msg = self.create_message("system", system_message, include_timestamp=False)
+            if isinstance(sys_msg["content"], str):
+                sys_msg["content"] = [{"type": "text", "text": sys_msg["content"]}]
+            for part in sys_msg["content"]:
+                if part.get("type") == "text":
+                    part["cache_control"] = {"type": "ephemeral"}
+            prepared_messages.append(sys_msg)
+            
+        # Add original messages
         for msg in messages:
             msg_copy = dict(msg)
             if isinstance(msg["content"], list):
                 msg_copy["content"] = [dict(part) for part in msg["content"]]
             prepared_messages.append(msg_copy)
-        
-        # add cache_control to system messages
-        for msg in prepared_messages:
-            if msg["role"] == "system":
-                if isinstance(msg["content"], str):
-                    msg["content"] = [{"type": "text", "text": msg["content"]}]
-                
-                # Add cache_control to all text parts
-                for part in msg["content"]:
-                    if part.get("type") == "text":
-                        part["cache_control"] = {"type": "ephemeral"}
         
         # Find last user message
         for msg in reversed(prepared_messages):
@@ -93,11 +93,12 @@ class OpenAIManager:
         
         return prepared_messages
 
-    async def get_chat_response(self, messages: List[Dict]) -> str:
+    async def get_chat_response(self, messages: List[Dict], system_message: Optional[str] = None) -> str:
         """Get a streaming chat response from OpenAI.
 
         Args:
             messages: List of message dictionaries
+            system_message: Optional system message to add at the start
 
         Returns:
             str: Complete response text
@@ -105,8 +106,8 @@ class OpenAIManager:
         Raises:
             Exception: If API call fails
         """
-        # Prepare messages with cache_control
-        prepared_messages = self.prepare_messages_for_completion(messages)
+        # Prepare messages with cache_control and system message
+        prepared_messages = self.prepare_messages_for_completion(messages, system_message)
         try:
             response = self.client.chat.completions.create(
                 model=self.model,

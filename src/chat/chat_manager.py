@@ -120,8 +120,8 @@ class ChatManager:
         self.messages.append(message)
         self.display_manager.display_message_panel(message)
 
-        # Get next response from OpenAI
-        next_response = await self.openai_manager.get_chat_response(self.messages)
+        # Get next response from OpenAI with system prompt
+        next_response = await self.openai_manager.get_chat_response(self.messages, self.system_prompt)
         return await self.process_response(next_response)
 
     def persist_chat(self):
@@ -135,10 +135,6 @@ class ChatManager:
         """Initialize chat with system prompt"""
         from .system import get_system_prompt
         self.system_prompt = await get_system_prompt(self.mcp_manager)
-
-        # Add system message
-        system_message = self.openai_manager.create_message("system", self.system_prompt)
-        self.messages = [system_message] + self.messages
 
     async def run(self):
         """Run the chat session"""
@@ -187,8 +183,8 @@ class ChatManager:
                     self.display_manager.display_message_panel(user_message)
 
                     try:
-                        # Get streaming response from OpenAI
-                        response = await self.openai_manager.get_chat_response(self.messages)
+                        # Get streaming response from OpenAI with system prompt
+                        response = await self.openai_manager.get_chat_response(self.messages, self.system_prompt)
 
                         # Process response and handle tool use
                         await self.process_response(response)

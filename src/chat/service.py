@@ -52,7 +52,7 @@ class ChatService:
                 content=msg['content'],
                 timestamp=msg.get('timestamp', timestamp),
                 unix_timestamp=msg.get('unix_timestamp', get_unix_timestamp())
-            ) for msg in messages]
+            ) for msg in messages if msg['role'] != 'system']
         )
         return self.repository.add_chat(chat)
 
@@ -68,7 +68,7 @@ class ChatService:
             content=msg['content'],
             timestamp=msg.get('timestamp', timestamp),
             unix_timestamp=msg.get('unix_timestamp', get_unix_timestamp())
-        ) for msg in messages]
+        ) for msg in messages if msg['role'] != 'system']
 
         chat.update_messages(new_messages)
         return self.repository.update_chat(chat)
