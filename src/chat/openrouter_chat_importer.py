@@ -26,7 +26,7 @@ def generate_short_id(timestamp: str) -> str:
 def calculate_file_md5(filepath: str) -> str:
     """Calculate MD5 hash of a file."""
     md5_hash = hashlib.md5()
-    with open(filepath, "rb") as f:
+    with open(filepath, "rb", encoding="utf-8") as f:
         # Read file in chunks to handle large files
         for chunk in iter(lambda: f.read(4096), b""):
             md5_hash.update(chunk)

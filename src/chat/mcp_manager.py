@@ -15,7 +15,7 @@ class MCPManager:
     def load_mcp_settings(self, settings_file: str) -> dict:
         """Load MCP server settings from json file"""
         try:
-            with open(settings_file, 'r') as f:
+            with open(settings_file, 'r', encoding="utf-8") as f:
                 settings = json.load(f)
             return settings.get('mcpServers', {})
         except (FileNotFoundError, json.JSONDecodeError) as e:
