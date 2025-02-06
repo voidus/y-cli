@@ -1,5 +1,6 @@
 import json
 import asyncio
+import os
 from typing import Dict, Optional, Tuple
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
@@ -26,10 +27,14 @@ class MCPManager:
         try:
             command = server_config['command']
 
+            # Merge current environment with server config env
+            env = dict(os.environ)
+            env.update(server_config.get('env', {}))
+
             server_params = StdioServerParameters(
                 command=command,
                 args=server_config.get('args', []),
-                env=server_config.get('env', {})
+                env=env
             )
 
             stdio_transport = await exit_stack.enter_async_context(stdio_client(server_params))
