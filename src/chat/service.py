@@ -26,11 +26,11 @@ class ChatService:
 
     def list_chats(self, keyword: Optional[str] = None, limit: int = 10) -> List[Chat]:
         """List chats with optional filtering
-        
+
         Args:
             keyword: Optional text to filter messages by content
             limit: Maximum number of chats to return (default: 10)
-            
+
         Returns:
             List of chats filtered by the given criteria, sorted by creation time descending
         """
@@ -61,7 +61,7 @@ class ChatService:
         chat = self.get_chat(chat_id)
         if not chat:
             raise ValueError(f"Chat with id {chat_id} not found")
-        
+
         timestamp = self._create_timestamp()
         new_messages = [Message(
             role=msg['role'],
@@ -69,7 +69,7 @@ class ChatService:
             timestamp=msg.get('timestamp', timestamp),
             unix_timestamp=msg.get('unix_timestamp', get_unix_timestamp())
         ) for msg in messages]
-        
+
         chat.update_messages(new_messages)
         return self.repository.update_chat(chat)
 
@@ -82,7 +82,7 @@ class ChatService:
         chat = self.get_chat(chat_id)
         if not chat:
             raise ValueError(f"Chat with id {chat_id} not found")
-        
+
         timestamp = self._create_timestamp()
         new_message = Message(
             role=role,
@@ -92,18 +92,18 @@ class ChatService:
         )
         chat.messages.append(new_message)
         chat.update_time = timestamp
-        
+
         return self.repository.update_chat(chat)
 
     def generate_share_html(self, chat_id: str) -> str:
         """Generate HTML file for sharing a chat using pandoc
-        
+
         Args:
             chat_id: ID of the chat to share
-            
+
         Returns:
             Path to the generated HTML file
-        
+
         Raises:
             ValueError: If chat not found
         """
@@ -122,7 +122,7 @@ class ChatService:
         # Write markdown to temporary file
         md_file = os.path.join(TMP_DIR, f"{chat_id}.md")
         html_file = os.path.join(TMP_DIR, f"{chat_id}.html")
-        
+
         with open(md_file, "w", encoding="utf-8") as f:
             f.write(md_content)
 
@@ -139,7 +139,7 @@ hr { margin: 2rem 0; border: 0; border-top: 1px solid #eee; }
 .images { margin: 1rem 0; }
 </style>
 '''
-        
+
         # Create temporary CSS file
         css_file = os.path.join(TMP_DIR, f"{chat_id}.css")
         with open(css_file, "w", encoding="utf-8") as f:

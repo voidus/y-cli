@@ -8,7 +8,7 @@ class ChatRepository:
     def __init__(self, data_file: str):
         self.data_file = os.path.expanduser(data_file)
         self._ensure_file_exists()
-    
+
     def _ensure_file_exists(self) -> None:
         """Ensure the data file exists"""
         if not os.path.exists(self.data_file):
@@ -36,22 +36,22 @@ class ChatRepository:
 
     def list_chats(self, keyword: Optional[str] = None, limit: int = 10) -> List[Chat]:
         """List chats with optional filtering
-        
+
         Args:
             keyword: Optional text to filter messages by content
             limit: Maximum number of chats to return (default: 10)
         """
         chats = self._read_chats()
-        
+
         # Sort by create_time in descending order
         chats.sort(key=lambda x: x.create_time, reverse=True)
-        
+
         if keyword:
             chats = [
-                chat for chat in chats 
+                chat for chat in chats
                 if any(keyword.lower() in msg.content.lower() for msg in chat.messages)
             ]
-        
+
         return chats[:limit]
 
     def get_chat(self, chat_id: str) -> Optional[Chat]:

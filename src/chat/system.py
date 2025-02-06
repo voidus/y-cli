@@ -6,15 +6,15 @@ async def format_server_info(sessions: Dict[str, ClientSession]) -> str:
     """Format MCP server information for the system prompt"""
     if not sessions:
         return "(No MCP servers currently connected)"
-    
+
     server_sections = []
-    
+
     for server_name, session in sessions.items():
         # Get server information
         tools_section = ""
         templates_section = ""
         resources_section = ""
-        
+
         try:
             # Get and format tools section
             tools_response = await session.list_tools()
@@ -26,12 +26,12 @@ async def format_server_info(sessions: Dict[str, ClientSession]) -> str:
                         schema_json = json.dumps(tool.inputSchema, indent=2)
                         schema_lines = schema_json.split("\n")
                         schema_str = "\n    Input Schema:\n    " + "\n    ".join(schema_lines)
-                    
+
                     tools.append(f"- {tool.name}: {tool.description}{schema_str}")
                 tools_section = "\n\n### Available Tools\n" + "\n\n".join(tools)
         except Exception as e:
             print(f"Error listing tools for {server_name}: {str(e)}")
-            
+
         try:
             # Get and format resource templates section
             templates_response = await session.list_resource_templates()
@@ -45,7 +45,7 @@ async def format_server_info(sessions: Dict[str, ClientSession]) -> str:
         except Exception as e:
             pass
             # print(f"Error listing resource templates for {server_name}: {str(e)}")
-            
+
         try:
             # Get and format direct resources section
             resources_response = await session.list_resources()
@@ -59,7 +59,7 @@ async def format_server_info(sessions: Dict[str, ClientSession]) -> str:
         except Exception as e:
             pass
             # print(f"Error listing resources for {server_name}: {str(e)}")
-        
+
         # Combine all sections
         server_section = (
             f"## {server_name}"
@@ -68,7 +68,7 @@ async def format_server_info(sessions: Dict[str, ClientSession]) -> str:
             f"{resources_section}"
         )
         server_sections.append(server_section)
-    
+
     return "\n\n".join(server_sections)
 
 async def get_system_prompt(mcp_client) -> str:
@@ -80,7 +80,7 @@ async def get_system_prompt(mcp_client) -> str:
 PRIVATE ASSISTANT
 
 I am y, your private assistant. I am here to help you with a wide range of tasks, from managing your projects to providing information and assistance on various topics. I can help you with simple chat, task management, and much more. Just let me know what you need help with, and I'll do my best to assist you.
-    
+
 ====
 
 TOOL USE
@@ -196,9 +196,9 @@ When a server is connected, you can use the server's tools via the `use_mcp_tool
 While MCP servers can provide additional tools and resources, they are not always required. You can still perform a wide range of tasks without connecting to an MCP server. However, when you need additional capabilities or access to specific resources, connecting to an MCP server can greatly enhance your functionality.
 
 """
-    
+
     # Get formatted server information
     server_info = await format_server_info(mcp_client.sessions)
-    
+
     # Combine base prompt with server information
     return base_prompt + server_info

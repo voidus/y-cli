@@ -1,14 +1,17 @@
 from dataclasses import dataclass
-from typing import List, Dict, Optional, Union
+from typing import List, Dict, Optional, Union, Iterable
 from datetime import datetime
 import time
+
+from openai.types.chat.chat_completion_content_part_param import ChatCompletionContentPartParam
+from openai.types.chat.chat_completion_user_message_param import ChatCompletionUserMessageParam
 
 from .util import get_iso8601_timestamp, get_unix_timestamp
 
 @dataclass
 class Message:
     role: str
-    content: str
+    content: Union[str, Iterable[ChatCompletionContentPartParam]]
     timestamp: str
     unix_timestamp: int
     source: Optional[str] = None
@@ -25,10 +28,18 @@ class Message:
             # Convert ISO timestamp to unix timestamp
             dt = datetime.strptime(data['timestamp'].split('+')[0], "%Y-%m-%dT%H:%M:%S")
             unix_timestamp = int(dt.timestamp() * 1000)
-        
+
+        # Handle content which can be str or list of content parts
+        content = data['content']
+        if isinstance(content, list):
+            # Validate each content part has required fields
+            for part in content:
+                if not isinstance(part, dict) or 'type' not in part or 'text' not in part:
+                    raise ValueError("Invalid content part structure")
+
         return cls(
             role=data['role'],
-            content=data['content'],
+            content=content,  # Keep original structure (str or list)
             timestamp=data['timestamp'],
             unix_timestamp=unix_timestamp,
             source=data.get('source'),
@@ -37,11 +48,11 @@ class Message:
             model=data.get('model'),
             id=data.get('id')
         )
-    
+
     def to_dict(self) -> Dict:
         result = {
             'role': self.role,
-            'content': self.content,
+            'content': self.content,  # Keep original structure (str or list)
             'timestamp': self.timestamp,
             'unix_timestamp': self.unix_timestamp
         }
@@ -75,7 +86,7 @@ class Chat:
                 key=lambda x: (x.unix_timestamp)
             )
         )
-    
+
     def to_dict(self) -> Dict:
         return {
             'create_time': self.create_time,
@@ -83,7 +94,7 @@ class Chat:
             'update_time': self.update_time,
             'messages': [m.to_dict() for m in self.messages]
         }
-    
+
     def update_messages(self, messages: List[Message]) -> None:
         # Filter out system messages and sort the remaining ones by timestamp
         self.messages = sorted(

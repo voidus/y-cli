@@ -37,7 +37,7 @@ def load_config():
             for key, value in defaults.items():
                 if key not in config:
                     config[key] = value
-    
+
     DATA_FILE = os.path.expanduser(config["data_file"])
     # ensure the directory exists
     os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
