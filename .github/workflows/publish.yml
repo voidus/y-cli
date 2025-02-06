@@ -28,6 +28,8 @@ jobs:
     
     - name: Build and publish package
       run: |
+        uv venv
+        . .venv/bin/activate
         uv pip install build
         python -m build
         uv pip install twine
