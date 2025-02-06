@@ -66,6 +66,7 @@ class ChatManager:
         self.messages = [{
             "role": msg.role,
             "content": msg.content,
+            "reasoning_content": msg.reasoning_content,
             "timestamp": msg.timestamp,
             "model": msg.model,
             "provider": msg.provider
@@ -87,22 +88,20 @@ class ChatManager:
                 return False
             self.display_manager.console.print("[yellow]Please answer 'y' or 'n'[/yellow]")
 
-    async def process_response(self, response_content: str) -> str:
+    async def process_response(self, response: SimpleNamespace) -> str:
         """Process assistant response and handle tool use recursively"""
         # Extract content and metadata based on response type
-        content = response_content
-        provider = None
-        model = None
-        if isinstance(response_content, SimpleNamespace):
-            content = response_content.content
-            provider = getattr(response_content, 'provider', None)
-            model = getattr(response_content, 'model', None)
+        content = response.content
+        reasoning_content = response.reasoning_content
+        provider = getattr(response, 'provider', None)
+        model = getattr(response, 'model', None)
 
         if not self.openrouter_manager.contains_tool_use(content):
             # Base case: no tool use, append message and return
             message = self.openrouter_manager.create_message(
-                "assistant", 
+                "assistant",
                 content,
+                reasoning_content=reasoning_content,
                 provider=provider,
                 model=model
             )

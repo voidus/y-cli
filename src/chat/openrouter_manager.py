@@ -34,7 +34,7 @@ class OpenRouterManager:
         """Set the display manager for streaming responses"""
         self.display_manager = display_manager
 
-    def create_message(self, role: str, content: str, include_timestamp: bool = True, provider: Optional[str] = None, model: Optional[str] = None) -> Dict:
+    def create_message(self, role: str, content: str, reasoning_content: Optional[str] = None, include_timestamp: bool = True, provider: Optional[str] = None, model: Optional[str] = None) -> Dict:
         """Create a message dictionary with optional timestamps, provider, and model.
 
         Args:
@@ -51,6 +51,9 @@ class OpenRouterManager:
             "role": role,
             "content": content
         }
+
+        if reasoning_content is not None:
+            message["reasoning_content"] = reasoning_content
         
         if include_timestamp:
             message.update({
@@ -131,6 +134,14 @@ class OpenRouterManager:
         prepared_messages = self.prepare_messages_for_completion(messages, system_message)
         openrouter_config = self.load_openrouter_config(OPENROUTER_CONFIG_FILE)
         provider_config = openrouter_config.get('provider', {})
+        body = {
+            "model": self.model,
+            "messages": prepared_messages,
+            "stream": True,
+            "provider": provider_config
+        }
+        if "deepseek-r1" in self.model:
+            body["include_reasoning"] = True
         try:
             async with httpx.AsyncClient(base_url=self.base_url) as client:
                 async with client.stream(
@@ -142,12 +153,7 @@ class OpenRouterManager:
                         "Authorization": f"Bearer {self.api_key}",
                         "Content-Type": "application/json",
                     },
-                    json={
-                        "model": self.model,
-                        "messages": prepared_messages,
-                        "stream": True,
-                        "provider": provider_config
-                    },
+                    json=body,
                     timeout=60.0
                 ) as response:
                     response.raise_for_status()
@@ -170,11 +176,13 @@ class OpenRouterManager:
                                             model = data["model"]
                                             
                                         if data.get("choices"):
-                                            content = data["choices"][0].get("delta", {}).get("content")
-                                            if content is not None:
+                                            delta = data["choices"][0].get("delta", {})
+                                            content = delta.get("content")
+                                            reasoning_content = delta.get("reasoning")
+                                            if content is not None or reasoning_content is not None:
                                                 chunk_data = SimpleNamespace(
                                                     choices=[SimpleNamespace(
-                                                        delta=SimpleNamespace(content=content)
+                                                        delta=SimpleNamespace(content=content, reasoning_content=reasoning_content)
                                                     )],
                                                     model=model,
                                                     provider=provider
@@ -182,15 +190,17 @@ class OpenRouterManager:
                                                 yield chunk_data
                                     except json.JSONDecodeError:
                                         continue
-                        all_content = await self.display_manager.stream_response(generate_chunks())
+                        content_full, reasoning_content_full = await self.display_manager.stream_response(generate_chunks())
                         return SimpleNamespace(
-                            content=all_content,
+                            content=content_full,
+                            reasoning_content=reasoning_content_full,
                             provider=provider,
                             model=model
                         )
                     else:
                         # Fallback for when display manager isn't set
-                        collected_messages = []
+                        collected_content = []
+                        collected_reasoning_content = []
                         provider = None
                         model = None
                         async for chunk in response.aiter_lines():
@@ -203,13 +213,18 @@ class OpenRouterManager:
                                     if model is None and data.get("model"):
                                         model = data["model"]
                                     if data.get("choices"):
-                                        content = data["choices"][0].get("delta", {}).get("content")
+                                        delta = data["choices"][0].get("delta", {})
+                                        content = delta.get("content")
+                                        reasoning_content = delta.get("reasoning")
                                         if content is not None:
-                                            collected_messages.append(content)
+                                            collected_content.append(content)
+                                        if reasoning_content is not None:
+                                            collected_reasoning_content.append(reasoning_content)
                                 except json.JSONDecodeError:
                                     continue
                         return SimpleNamespace(
-                            content="".join(collected_messages),
+                            content="".join(collected_content),
+                            reasoning_content="".join(collected_reasoning_content),
                             provider=provider,
                             model=model
                         )

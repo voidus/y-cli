@@ -12,9 +12,9 @@ from .util import get_iso8601_timestamp, get_unix_timestamp
 class Message:
     role: str
     content: Union[str, Iterable[ChatCompletionContentPartParam]]
-    # reasoning_content: Optional[str] = None
     timestamp: str
     unix_timestamp: int
+    reasoning_content: Optional[str] = None
     links: Optional[List[str]] = None
     images: Optional[List[str]] = None
     model: Optional[str] = None
@@ -41,6 +41,7 @@ class Message:
         return cls(
             role=data['role'],
             content=content,  # Keep original structure (str or list)
+            reasoning_content=data.get('reasoning_content'),
             timestamp=data['timestamp'],
             unix_timestamp=unix_timestamp,
             provider=data.get('provider'),
@@ -68,6 +69,8 @@ class Message:
             'timestamp': self.timestamp,
             'unix_timestamp': self.unix_timestamp
         }
+        if self.reasoning_content is not None:
+            result['reasoning_content'] = self.reasoning_content
         if self.id is not None:
             result['id'] = self.id
         if self.links is not None:

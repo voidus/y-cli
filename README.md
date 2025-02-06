@@ -6,6 +6,7 @@ A powerful command-line interface chat application that brings AI conversations 
 
 - 💬 Interactive chat interface
 - 🔗 MCP (Model Context Protocol) client support
+- 🤔 Deepseek-r1 reasoning content support for enhanced AI responses
 
 ## 🛠️ Usage
 

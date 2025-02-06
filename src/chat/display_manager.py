@@ -17,7 +17,7 @@ custom_theme = Theme({
 
 class DisplayManager:
     def __init__(self):
-        self.console = Console(theme=custom_theme)
+        self.console = Console(theme=custom_theme, height=None)
         self.code_blocks: List[str] = []
 
     def process_code_blocks(self, content: str) -> Tuple[str, List[str]]:
@@ -69,49 +69,73 @@ class DisplayManager:
         modified_content, code_blocks = self.process_code_blocks(content)
         self.code_blocks.extend(code_blocks)
 
+        # Construct display content with reasoning first
+        display_content = ""
+        if 'reasoning_content' in msg and msg['reasoning_content']:
+            display_content = f"```markdown\n{msg['reasoning_content']}\n```\n"
+        display_content += modified_content
+
         self.console.print(Panel(
-            Markdown(modified_content),
+            Markdown(display_content),
             title=f"{role} {timestamp}{model_info}",
             border_style=msg['role']
         ))
 
-    async def stream_response(self, response_stream) -> str:
+    async def stream_response(self, response_stream) -> Tuple[str, str]:
         """Stream and display the response in real-time with a live-updating panel.
 
         Args:
             response_stream: The streaming response from OpenRouter API
 
         Returns:
-            str: The complete response text
+            Tuple[str, str]: A tuple containing (complete response text, reasoning text)
         """
-        collected_messages = []
-        current_content = ""
+        all_content = ""
+        all_reasoning_content = ""
+        collected_content = []
+        collected_reasoning_content = []
         timestamp = get_iso8601_timestamp()
         role_title = f"[assistant]Assistant[/assistant]"
         timestamp_str = f"[timestamp]{timestamp}[/timestamp]"
         
         # Create a panel that will be updated with streaming content
-        with Live("", console=self.console, refresh_per_second=10, auto_refresh=False) as live:
+        # Cache for Markdown parsing
+        last_content = ""
+        
+        with Live("", console=self.console, refresh_per_second=4, auto_refresh=True, vertical_overflow="visible") as live:
             async for chunk in response_stream:
-                if chunk.choices[0].delta.content is not None:
-                    content = chunk.choices[0].delta.content
+                delta = chunk.choices[0].delta
+                content = delta.content
+                reasoning_content = delta.reasoning_content
+                if content is not None or reasoning_content is not None:
                     model = chunk.model
                     provider = chunk.provider
                     provider_info = f" [{provider}]" if provider else ""
                     model_info = f" [dim][{model}{provider_info}][/dim]"
-                    current_content += content
-                    collected_messages.append(content)
+                    if content is not None:
+                        all_content += content
+                        collected_content.append(content)
+                    if reasoning_content is not None:
+                        all_reasoning_content += reasoning_content
+                        collected_reasoning_content.append(reasoning_content)
+                    # Construct display content with reasoning first
+                    display_content = ""
+                    if all_reasoning_content:
+                        display_content = f"```markdown\n{all_reasoning_content}\n```\n"
+                    display_content += all_content
 
-                    # Update panel with current content
-                    panel = Panel(
-                        Markdown(current_content),
-                        title=f"{role_title} {timestamp_str}{model_info}",
-                        border_style="assistant"
-                    )
-                    live.update(panel)
-                    live.refresh()
+                    # Only update if content has changed
+                    if display_content != last_content:
+                        last_content = display_content
+                        # Create panel with current content
+                        panel = Panel(
+                            Markdown(f"{display_content}"),
+                            title=f"{role_title} {timestamp_str}{model_info}",
+                            border_style="assistant"
+                        )
+                        live.update(panel)
 
-        return "".join(collected_messages)
+        return "".join(collected_content), "".join(collected_reasoning_content)
 
     def display_help(self):
         """Display help information about available commands and features"""

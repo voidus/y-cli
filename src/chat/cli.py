@@ -142,16 +142,13 @@ def list(keyword: Optional[str], limit: int):
 @cli.command()
 @click.option('--chat-id', '-c', help='ID of the chat to share')
 @click.option('--latest', '-l', is_flag=True, help='Share the latest chat')
-def share(chat_id: Optional[str], latest: bool):
-    """Share a chat conversation by generating a shareable link.
+@click.option('--push', '-p', is_flag=True, help='Push to S3 after generating HTML')
+def share(chat_id: Optional[str], latest: bool, push: bool):
+    """Share a chat conversation.
 
     Use --latest/-l to share your most recent chat.
     Use --chat-id/-c to share a specific chat ID.
     """
-    if not config["s3_bucket"] or not config["cloudfront_distribution_id"]:
-        click.echo("Error: S3 bucket and CloudFront distribution ID must be configured")
-        click.echo("Please set S3_BUCKET and CLOUDFRONT_DISTRIBUTION_ID environment variables")
-        raise click.Abort()
 
     chat_app = ChatApp(model=None)
 
@@ -169,14 +166,23 @@ def share(chat_id: Optional[str], latest: bool):
         # Generate HTML file
         tmp_file = chat_app.chat_manager.service.generate_share_html(chat_id)
 
-        # Upload to S3
-        os.system(f'aws s3 cp "{tmp_file}" s3://{config["s3_bucket"]}/chat/{chat_id}.html > /dev/null')
+        if push and (not config["s3_bucket"] or not config["cloudfront_distribution_id"]):
+            click.echo("Error: S3 bucket and CloudFront distribution ID must be configured")
+            click.echo("Please set S3_BUCKET and CLOUDFRONT_DISTRIBUTION_ID environment variables")
+            raise click.Abort()
 
-        # Invalidate CloudFront cache
-        os.system(f'aws cloudfront create-invalidation --distribution-id {config["cloudfront_distribution_id"]} --paths "/chat/{chat_id}.html" > /dev/null')
+        # Always open the HTML file
+        os.system(f'open "{tmp_file}"')
 
-        # Print the shareable URL
-        click.echo(f'https://{config["s3_bucket"]}/chat/{chat_id}.html')
+        if push:
+            # Upload to S3
+            os.system(f'aws s3 cp "{tmp_file}" s3://{config["s3_bucket"]}/chat/{chat_id}.html > /dev/null')
+
+            # Invalidate CloudFront cache
+            os.system(f'aws cloudfront create-invalidation --distribution-id {config["cloudfront_distribution_id"]} --paths "/chat/{chat_id}.html" > /dev/null')
+
+            # Print the shareable URL
+            click.echo(f'https://{config["s3_bucket"]}/chat/{chat_id}.html')
 
     except ValueError as e:
         click.echo(f"Error: {str(e)}")
