@@ -50,9 +50,20 @@ class Message:
         )
 
     def to_dict(self) -> Dict:
+        # Filter out cache_control from content if it's a list of parts
+        if isinstance(self.content, list):
+            content = []
+            for part in self.content:
+                part_copy = dict(part)
+                if 'cache_control' in part_copy:
+                    del part_copy['cache_control']
+                content.append(part_copy)
+        else:
+            content = self.content
+
         result = {
             'role': self.role,
-            'content': self.content,  # Keep original structure (str or list)
+            'content': content,
             'timestamp': self.timestamp,
             'unix_timestamp': self.unix_timestamp
         }

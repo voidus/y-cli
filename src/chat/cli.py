@@ -6,7 +6,8 @@ import json
 import os
 from rich.console import Console
 
-from .app import ChatApp, custom_theme
+from .app import ChatApp
+from .display_manager import custom_theme
 from .config import (
     OPENAI_API_KEY, DATA_FILE, OPENAI_API_BASE, DEFAULT_MODEL,
     TMP_DIR, config
@@ -30,17 +31,31 @@ def chat(chat_id: Optional[str], latest: bool, model: Optional[str], verbose: bo
 
     Use --latest/-l to continue from your most recent chat.
     Use --chat-id/-c to continue from a specific chat ID.
+    If neither option is provided, starts a new chat.
     """
     console = Console(theme=custom_theme)
 
+    # Create a single ChatApp instance for all operations
+    chat_app = ChatApp(verbose=verbose)
+
     # Handle --latest flag
     if latest:
-        temp_app = ChatApp()
-        chats = temp_app.service.list_chats(limit=1)
+        chats = chat_app.chat_manager.service.list_chats(limit=1)
         if not chats:
             click.echo("Error: No existing chats found")
             raise click.Abort()
         chat_id = chats[0].id
+        # Reinitialize ChatApp with the found chat_id
+        chat_app = ChatApp(chat_id=chat_id, verbose=verbose)
+
+    # Handle --chat-id flag
+    elif chat_id:
+        # Verify the chat exists
+        if not chat_app.chat_manager.service.get_chat(chat_id):
+            click.echo(f"Error: Chat with ID {chat_id} not found")
+            raise click.Abort()
+        # Reinitialize ChatApp with the specified chat_id
+        chat_app = ChatApp(chat_id=chat_id, verbose=verbose)
 
     if verbose:
         console.print(f"Using file for chat data: {DATA_FILE}")
@@ -48,9 +63,10 @@ def chat(chat_id: Optional[str], latest: bool, model: Optional[str], verbose: bo
         console.print(f"Using model: {model or DEFAULT_MODEL}")
         if chat_id:
             console.print(f"Continuing from chat {chat_id}")
+        else:
+            console.print("Starting new chat")
 
-    chat_app = ChatApp(chat_id, verbose=verbose)
-    chat_app.model = model or DEFAULT_MODEL
+    chat_app.chat_manager.openai_manager.model = model or DEFAULT_MODEL
     asyncio.run(chat_app.chat())
 
 @cli.command()
@@ -64,7 +80,7 @@ def list(keyword: Optional[str], limit: int):
     Use --limit to control the number of results.
     """
     chat_app = ChatApp()
-    chats = chat_app.service.list_chats(keyword=keyword, limit=limit)
+    chats = chat_app.chat_manager.service.list_chats(keyword=keyword, limit=limit)
     if not chats:
         if keyword:
             click.echo(f"No chats found matching keyword: {keyword}")
@@ -132,7 +148,7 @@ def share(chat_id: Optional[str], latest: bool):
 
     # Handle --latest flag
     if latest:
-        chats = chat_app.service.list_chats(limit=1)
+        chats = chat_app.chat_manager.service.list_chats(limit=1)
         if not chats:
             click.echo("Error: No chats found to share")
             raise click.Abort()
@@ -142,7 +158,7 @@ def share(chat_id: Optional[str], latest: bool):
 
     try:
         # Generate HTML file
-        tmp_file = chat_app.service.generate_share_html(chat_id)
+        tmp_file = chat_app.chat_manager.service.generate_share_html(chat_id)
 
         # Upload to S3
         os.system(f'aws s3 cp "{tmp_file}" s3://{config["s3_bucket"]}/chat/{chat_id}.html > /dev/null')
