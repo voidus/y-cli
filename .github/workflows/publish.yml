@@ -30,10 +30,9 @@ jobs:
       run: |
         uv venv
         . .venv/bin/activate
-        uv pip install build
+        uv pip install build twine
         python -m build
-        uv pip install twine
-        uv pip publish dist/*
+        twine upload dist/*
       env:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
