@@ -1,13 +1,16 @@
 from dataclasses import dataclass
 from typing import List, Dict, Optional, Union
+from datetime import datetime
+import time
 
-from .util import get_iso8601_timestamp
+from .util import get_iso8601_timestamp, get_unix_timestamp
 
 @dataclass
 class Message:
     role: str
     content: str
     timestamp: str
+    unix_timestamp: int
     source: Optional[str] = None
     links: Optional[List[str]] = None
     images: Optional[List[str]] = None
@@ -16,10 +19,18 @@ class Message:
 
     @classmethod
     def from_dict(cls, data: Dict) -> 'Message':
+        # Get or generate unix_timestamp
+        unix_timestamp = data.get('unix_timestamp')
+        if unix_timestamp is None:
+            # Convert ISO timestamp to unix timestamp
+            dt = datetime.strptime(data['timestamp'].split('+')[0], "%Y-%m-%dT%H:%M:%S")
+            unix_timestamp = int(dt.timestamp() * 1000)
+        
         return cls(
             role=data['role'],
             content=data['content'],
             timestamp=data['timestamp'],
+            unix_timestamp=unix_timestamp,
             source=data.get('source'),
             links=data.get('links'),
             images=data.get('images'),
@@ -31,7 +42,8 @@ class Message:
         result = {
             'role': self.role,
             'content': self.content,
-            'timestamp': self.timestamp
+            'timestamp': self.timestamp,
+            'unix_timestamp': self.unix_timestamp
         }
         if self.id is not None:
             result['id'] = self.id
@@ -59,8 +71,8 @@ class Chat:
             create_time=data['create_time'],
             update_time=data['update_time'],
             messages=sorted(
-                [Message.from_dict(m) for m in data['messages']], 
-                key=lambda x: (x.timestamp, x.role == "assistant")
+                [Message.from_dict(m) for m in data['messages'] if m['role'] != "system"],
+                key=lambda x: (x.unix_timestamp)
             )
         )
     
@@ -73,5 +85,9 @@ class Chat:
         }
     
     def update_messages(self, messages: List[Message]) -> None:
-        self.messages = sorted(messages, key=lambda x: (x.timestamp, x.role == "assistant"))
+        # Filter out system messages and sort the remaining ones by timestamp
+        self.messages = sorted(
+            [msg for msg in messages if msg.role != "system"],
+            key=lambda x: (x.unix_timestamp)
+        )
         self.update_time = get_iso8601_timestamp()

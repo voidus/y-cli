@@ -1,4 +1,9 @@
 import time
+from datetime import datetime
+
+def get_unix_timestamp() -> int:
+    """Get current time as 13-digit unix timestamp (milliseconds)"""
+    return int(time.time() * 1000)
 
 def get_iso8601_timestamp() -> str:
     localtime = time.localtime()

@@ -9,7 +9,11 @@ def get_default_config():
         "openai_base_url": os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1"),
         "default_model": os.getenv("MODEL", "gpt-3.5-turbo"),
         "openrouter_import_dir": "~/.local/share/chat/openrouter_import",
-        "openrouter_import_history": "~/.local/share/chat/openrouter_import_history.jsonl"
+        "openrouter_import_history": "~/.local/share/chat/openrouter_import_history.jsonl",
+        "mcp_settings_file": "~/.config/chat/mcp_settings.json",
+        "tmp_dir": "~/.local/share/chat/tmp",
+        "s3_bucket": os.getenv("S3_BUCKET", ""),
+        "cloudfront_distribution_id": os.getenv("CLOUDFRONT_DISTRIBUTION_ID", "")
     }
 
 def load_config():
@@ -55,3 +59,6 @@ OPENAI_API_BASE = config["openai_base_url"]
 DEFAULT_MODEL = config["default_model"]
 OPENROUTER_IMPORT_DIR = os.path.expanduser(config["openrouter_import_dir"])
 OPENROUTER_IMPORT_HISTORY = os.path.expanduser(config["openrouter_import_history"])
+MCP_SETTINGS_FILE = os.path.expanduser(config["mcp_settings_file"])
+TMP_DIR = os.path.expanduser(config["tmp_dir"])
+os.makedirs(TMP_DIR, exist_ok=True)
