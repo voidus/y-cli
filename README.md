@@ -1,16 +1,22 @@
-# Chat CLI
+# Y CLI 🚀
 
-A command-line interface chat application.
+A powerful command-line interface chat application that brings AI conversations to your terminal.
 
-## Features
+## ✨ Features
 
-- Interactive chat interface
-- Copy command support:
-  - Use `0` to copy entire message
-  - Use `1-n` to copy specific code blocks
+- 💬 Interactive chat interface
+- 🔗 MCP (Model Context Protocol) client support
 
-## Version
+## 🛠️ Usage
 
-Current version: 0.1.1
+```bash
+y-cli [OPTIONS] COMMAND [ARGS]...
+```
 
-See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
+### Commands
+- `chat`   Start a new chat conversation or continue an existing one
+- `list`   List chat conversations with optional filtering
+- `share`  Share a chat conversation by generating a shareable link
+
+### Options
+- `--help`  Show help message and exit
