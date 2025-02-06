@@ -12,12 +12,13 @@ from .util import get_iso8601_timestamp, get_unix_timestamp
 class Message:
     role: str
     content: Union[str, Iterable[ChatCompletionContentPartParam]]
+    # reasoning_content: Optional[str] = None
     timestamp: str
     unix_timestamp: int
-    source: Optional[str] = None
     links: Optional[List[str]] = None
     images: Optional[List[str]] = None
     model: Optional[str] = None
+    provider: Optional[str] = None
     id: Optional[str] = None
 
     @classmethod
@@ -42,7 +43,7 @@ class Message:
             content=content,  # Keep original structure (str or list)
             timestamp=data['timestamp'],
             unix_timestamp=unix_timestamp,
-            source=data.get('source'),
+            provider=data.get('provider'),
             links=data.get('links'),
             images=data.get('images'),
             model=data.get('model'),
@@ -69,14 +70,14 @@ class Message:
         }
         if self.id is not None:
             result['id'] = self.id
-        if self.source is not None:
-            result['source'] = self.source
         if self.links is not None:
             result['links'] = self.links
         if self.images is not None:
             result['images'] = self.images
         if self.model is not None:
             result['model'] = self.model
+        if self.provider is not None:
+            result['provider'] = self.provider
         return result
 
 @dataclass

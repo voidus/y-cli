@@ -51,7 +51,9 @@ class ChatService:
                 role=msg['role'],
                 content=msg['content'],
                 timestamp=msg.get('timestamp', timestamp),
-                unix_timestamp=msg.get('unix_timestamp', get_unix_timestamp())
+                unix_timestamp=msg.get('unix_timestamp', get_unix_timestamp()),
+                model=msg.get('model'),
+                provider=msg.get('provider')
             ) for msg in messages if msg['role'] != 'system']
         )
         return self.repository.add_chat(chat)
@@ -67,7 +69,9 @@ class ChatService:
             role=msg['role'],
             content=msg['content'],
             timestamp=msg.get('timestamp', timestamp),
-            unix_timestamp=msg.get('unix_timestamp', get_unix_timestamp())
+            unix_timestamp=msg.get('unix_timestamp', get_unix_timestamp()),
+            model=msg.get('model'),
+            provider=msg.get('provider')
         ) for msg in messages if msg['role'] != 'system']
 
         chat.update_messages(new_messages)
@@ -76,24 +80,6 @@ class ChatService:
     def delete_chat(self, chat_id: str) -> bool:
         """Delete a chat by ID"""
         return self.repository.delete_chat(chat_id)
-
-    def add_message(self, chat_id: str, role: str, content: str) -> Chat:
-        """Add a new message to an existing chat"""
-        chat = self.get_chat(chat_id)
-        if not chat:
-            raise ValueError(f"Chat with id {chat_id} not found")
-
-        timestamp = self._create_timestamp()
-        new_message = Message(
-            role=role,
-            content=content,
-            timestamp=timestamp,
-            unix_timestamp=get_unix_timestamp()
-        )
-        chat.messages.append(new_message)
-        chat.update_time = timestamp
-
-        return self.repository.update_chat(chat)
 
     def generate_share_html(self, chat_id: str) -> str:
         """Generate HTML file for sharing a chat using pandoc

@@ -2,22 +2,18 @@ import os
 import sys
 import asyncio
 from typing import Optional
-from openai import OpenAI
-from rich.theme import Theme
-from contextlib import AsyncExitStack
 from dotenv import load_dotenv
 
-from .models import Chat
 from .repository import ChatRepository
 from .display_manager import DisplayManager
 from .input_manager import InputManager
 from .mcp_manager import MCPManager
-from .openai_manager import OpenAIManager
+from .openrouter_manager import OpenRouterManager
 from .chat_manager import ChatManager
 from .config import (
     DATA_FILE,
-    OPENAI_API_KEY,
-    OPENAI_API_BASE,
+    OPENROUTER_API_KEY,
+    OPENROUTER_API_BASE,
     DEFAULT_MODEL
 )
 
@@ -25,21 +21,22 @@ from .config import (
 load_dotenv()
 
 class ChatApp:
-    def __init__(self, chat_id: Optional[str] = None, verbose: bool = False):
+    def __init__(self, chat_id: Optional[str] = None, verbose: bool = False, model: str = DEFAULT_MODEL):
         """Initialize the chat application.
 
         Args:
             chat_id: Optional ID of existing chat to load
             verbose: Whether to show verbose output
+            model: Optional model to use for chat (defaults to DEFAULT_MODEL)
         """
         # Initialize managers
         display_manager = DisplayManager()
         input_manager = InputManager(display_manager.console)
         mcp_manager = MCPManager(display_manager.console)
-        openai_manager = OpenAIManager(
-            api_key=OPENAI_API_KEY,
-            base_url=OPENAI_API_BASE,
-            model=DEFAULT_MODEL
+        openrouter_manager = OpenRouterManager(
+            api_key=OPENROUTER_API_KEY,
+            base_url=OPENROUTER_API_BASE,
+            model=model
         )
 
         # Initialize repository and create chat manager
@@ -49,7 +46,8 @@ class ChatApp:
             display_manager=display_manager,
             input_manager=input_manager,
             mcp_manager=mcp_manager,
-            openai_manager=openai_manager,
+            openrouter_manager=openrouter_manager,
+            model=model,
             chat_id=chat_id,
             verbose=verbose
         )

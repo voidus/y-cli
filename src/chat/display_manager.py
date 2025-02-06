@@ -53,6 +53,12 @@ class DisplayManager:
         """
         timestamp = f"[timestamp]{msg['timestamp']}[/timestamp]"
         role = f"[{msg['role']}]{msg['role'].capitalize()}[/{msg['role']}]"
+        
+        # Add model/provider info if available
+        model_info = ""
+        if 'model' in msg and msg['model']:
+            provider = f" [{msg['provider']}]" if 'provider' in msg and msg['provider'] else ""
+            model_info = f" [dim][{msg['model']}{provider}][/dim]"
 
         # Extract content text from structured content if needed
         content = msg['content']
@@ -65,15 +71,15 @@ class DisplayManager:
 
         self.console.print(Panel(
             Markdown(modified_content),
-            title=f"{role} {timestamp}",
+            title=f"{role} {timestamp}{model_info}",
             border_style=msg['role']
         ))
 
-    def stream_response(self, response_stream) -> str:
+    async def stream_response(self, response_stream) -> str:
         """Stream and display the response in real-time with a live-updating panel.
 
         Args:
-            response_stream: The streaming response from OpenAI API
+            response_stream: The streaming response from OpenRouter API
 
         Returns:
             str: The complete response text
@@ -83,19 +89,23 @@ class DisplayManager:
         timestamp = get_iso8601_timestamp()
         role_title = f"[assistant]Assistant[/assistant]"
         timestamp_str = f"[timestamp]{timestamp}[/timestamp]"
-
+        
         # Create a panel that will be updated with streaming content
         with Live("", console=self.console, refresh_per_second=10, auto_refresh=False) as live:
-            for chunk in response_stream:
+            async for chunk in response_stream:
                 if chunk.choices[0].delta.content is not None:
                     content = chunk.choices[0].delta.content
+                    model = chunk.model
+                    provider = chunk.provider
+                    provider_info = f" [{provider}]" if provider else ""
+                    model_info = f" [dim][{model}{provider_info}][/dim]"
                     current_content += content
                     collected_messages.append(content)
 
                     # Update panel with current content
                     panel = Panel(
                         Markdown(current_content),
-                        title=f"{role_title} {timestamp_str}",
+                        title=f"{role_title} {timestamp_str}{model_info}",
                         border_style="assistant"
                     )
                     live.update(panel)

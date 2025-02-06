@@ -5,11 +5,12 @@ def get_default_config():
     """Get default configuration"""
     return {
         "data_file": "~/.local/share/chat/chat.jsonl",
-        "openai_api_key": os.getenv("OPENAI_API_KEY"),
-        "openai_base_url": os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1"),
-        "default_model": os.getenv("MODEL", "gpt-3.5-turbo"),
+        "openrouter_api_key": os.getenv("OPENROUTER_API_KEY"),
+        "openrouter_base_url": os.getenv("OPENROUTER_API_BASE", "https://api.openrouter.com/v1"),
+        "default_model": os.getenv("MODEL", "anthropic/claude-3.5-sonnet:beta"),
         "openrouter_import_dir": "~/.local/share/chat/openrouter_import",
         "openrouter_import_history": "~/.local/share/chat/openrouter_import_history.jsonl",
+        "openrouter_config_file": "~/.config/chat/openrouter_config.json",
         "mcp_settings_file": "~/.config/chat/mcp_settings.json",
         "tmp_dir": "~/.local/share/chat/tmp",
         "s3_bucket": os.getenv("S3_BUCKET", ""),
@@ -53,12 +54,13 @@ def load_config():
 
 config, DATA_FILE = load_config()
 
-# Export OpenAI configuration
-OPENAI_API_KEY = config["openai_api_key"]
-OPENAI_API_BASE = config["openai_base_url"]
+# Export OpenRouter configuration
+OPENROUTER_API_KEY = config["openrouter_api_key"]
+OPENROUTER_API_BASE = config["openrouter_base_url"]
 DEFAULT_MODEL = config["default_model"]
 OPENROUTER_IMPORT_DIR = os.path.expanduser(config["openrouter_import_dir"])
 OPENROUTER_IMPORT_HISTORY = os.path.expanduser(config["openrouter_import_history"])
 MCP_SETTINGS_FILE = os.path.expanduser(config["mcp_settings_file"])
+OPENROUTER_CONFIG_FILE = os.path.expanduser(config["openrouter_config_file"])
 TMP_DIR = os.path.expanduser(config["tmp_dir"])
 os.makedirs(TMP_DIR, exist_ok=True)

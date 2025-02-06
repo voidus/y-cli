@@ -9,24 +9,24 @@ from rich.console import Console
 from .app import ChatApp
 from .display_manager import custom_theme
 from .config import (
-    OPENAI_API_KEY, DATA_FILE, OPENAI_API_BASE, DEFAULT_MODEL,
+    OPENROUTER_API_KEY, DATA_FILE, OPENROUTER_API_BASE, DEFAULT_MODEL,
     TMP_DIR, config
 )
 
 @click.group()
 def cli():
     """Command-line interface for chat application."""
-    if not OPENAI_API_KEY:
-        click.echo("Error: OpenAI API key is not set")
-        click.echo("Please set it in the config file or OPENAI_API_KEY environment variable")
+    if not OPENROUTER_API_KEY:
+        click.echo("Error: OpenRouter API key is not set")
+        click.echo("Please set it in the config file or OPENROUTER_API_KEY environment variable")
         raise click.Abort()
 
 @cli.command()
 @click.option('--chat-id', '-c', help='Continue from an existing chat')
 @click.option('--latest', '-l', is_flag=True, help='Continue from the latest chat')
-@click.option('--model', '-m', help=f'OpenAI model to use (default: {DEFAULT_MODEL})')
+@click.option('--model', '-m', help=f'OpenRouter model to use (default: {DEFAULT_MODEL})')
 @click.option('--verbose', '-v', is_flag=True, help='Show detailed usage instructions')
-def chat(chat_id: Optional[str], latest: bool, model: Optional[str], verbose: bool):
+def chat(chat_id: Optional[str], latest: bool, model: Optional[str] = None, verbose: bool = False):
     """Start a new chat conversation or continue an existing one.
 
     Use --latest/-l to continue from your most recent chat.
@@ -35,8 +35,12 @@ def chat(chat_id: Optional[str], latest: bool, model: Optional[str], verbose: bo
     """
     console = Console(theme=custom_theme)
 
+    # if not model
+    if not model:
+        model = DEFAULT_MODEL
+
     # Create a single ChatApp instance for all operations
-    chat_app = ChatApp(verbose=verbose)
+    chat_app = ChatApp(verbose=verbose, model=model)
 
     # Handle --latest flag
     if latest:
@@ -46,7 +50,7 @@ def chat(chat_id: Optional[str], latest: bool, model: Optional[str], verbose: bo
             raise click.Abort()
         chat_id = chats[0].id
         # Reinitialize ChatApp with the found chat_id
-        chat_app = ChatApp(chat_id=chat_id, verbose=verbose)
+        chat_app = ChatApp(chat_id=chat_id, verbose=verbose, model=model)
 
     # Handle --chat-id flag
     elif chat_id:
@@ -55,18 +59,17 @@ def chat(chat_id: Optional[str], latest: bool, model: Optional[str], verbose: bo
             click.echo(f"Error: Chat with ID {chat_id} not found")
             raise click.Abort()
         # Reinitialize ChatApp with the specified chat_id
-        chat_app = ChatApp(chat_id=chat_id, verbose=verbose)
+        chat_app = ChatApp(chat_id=chat_id, verbose=verbose, model=model)
 
     if verbose:
         console.print(f"Using file for chat data: {DATA_FILE}")
-        console.print(f"Using OpenAI API Base URL: {OPENAI_API_BASE}")
+        console.print(f"Using OpenRouter API Base URL: {OPENROUTER_API_BASE}")
         console.print(f"Using model: {model or DEFAULT_MODEL}")
         if chat_id:
             console.print(f"Continuing from chat {chat_id}")
         else:
             console.print("Starting new chat")
 
-    chat_app.chat_manager.openai_manager.model = model or DEFAULT_MODEL
     asyncio.run(chat_app.chat())
 
 @cli.command()
@@ -79,7 +82,7 @@ def list(keyword: Optional[str], limit: int):
     Use --keyword to filter by message content.
     Use --limit to control the number of results.
     """
-    chat_app = ChatApp()
+    chat_app = ChatApp(model=None)
     chats = chat_app.chat_manager.service.list_chats(keyword=keyword, limit=limit)
     if not chats:
         if keyword:
@@ -104,28 +107,34 @@ def list(keyword: Optional[str], limit: int):
         if len(full_context) > 100:
             full_context = full_context[:97] + "..."
 
-        # Get source and model from first assistant message if available
+        # Get provider and model from last assistant message if available
         model = "N/A"
-        if len(chat.messages) > 1 and chat.messages[1].role == "assistant":
-            assistant_msg = chat.messages[1]
-            if assistant_msg.model:
-                model = assistant_msg.model
+        provider = "N/A"
+        # Search messages in reverse to find the last assistant message
+        for msg in reversed(chat.messages):
+            if msg.role == "assistant":
+                if msg.model:
+                    model = msg.model
+                if msg.provider:
+                    provider = msg.provider
+                break
 
         table_data.append([
             chat.id,
             chat.create_time.split("T")[0],
             title,
             full_context,
-            model
+            model,
+            provider
         ])
 
     # Print formatted table
-    headers = ["ID", "Created Time", "Title", "Full Context", "Model"]
+    headers = ["ID", "Created Time", "Title", "Full Context", "Model", "Provider"]
     click.echo(tabulate(
         table_data,
         headers=headers,
         tablefmt="simple",
-        maxcolwidths=[6, 10, 30, 60, 20],
+        maxcolwidths=[6, 10, 30, 50, 15, 15],
         numalign='left',
         stralign='left'
     ))
@@ -144,7 +153,7 @@ def share(chat_id: Optional[str], latest: bool):
         click.echo("Please set S3_BUCKET and CLOUDFRONT_DISTRIBUTION_ID environment variables")
         raise click.Abort()
 
-    chat_app = ChatApp()
+    chat_app = ChatApp(model=None)
 
     # Handle --latest flag
     if latest:

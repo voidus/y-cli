@@ -121,11 +121,11 @@ def extract_new_chats(input_file: str) -> List[Chat]:
                 "id": msg_id
             }
 
-            # Add source and model from metadata if present for assistant messages
+            # Add provider and model from metadata if present for assistant messages
             if message['role'] == 'assistant' and 'metadata' in msg_data:
                 metadata = msg_data['metadata']
                 if 'provider' in metadata:
-                    message['source'] = metadata['provider']
+                    message['provider'] = metadata['provider']
                 if 'variantSlug' in metadata:
                     message['model'] = metadata['variantSlug']
 

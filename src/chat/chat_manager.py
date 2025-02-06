@@ -1,16 +1,16 @@
 from typing import List, Dict, Optional
 from contextlib import AsyncExitStack
-import pyperclip
+from types import SimpleNamespace
 
-from .models import Chat, Message
+from .models import Chat
 from .repository import ChatRepository
 from .service import ChatService
 from .display_manager import DisplayManager
 from .input_manager import InputManager
 from .mcp_manager import MCPManager
-from .openai_manager import OpenAIManager
-from .util import get_iso8601_timestamp, get_unix_timestamp
-from .config import MCP_SETTINGS_FILE
+from .openrouter_manager import OpenRouterManager
+from .config import MCP_SETTINGS_FILE, DEFAULT_MODEL
+from .system import get_system_prompt
 
 class ChatManager:
     def __init__(
@@ -19,9 +19,10 @@ class ChatManager:
         display_manager: DisplayManager,
         input_manager: InputManager,
         mcp_manager: MCPManager,
-        openai_manager: OpenAIManager,
+        openrouter_manager: OpenRouterManager,
         chat_id: Optional[str] = None,
-        verbose: bool = False
+        verbose: bool = False,
+        model: str = DEFAULT_MODEL
     ):
         """Initialize chat manager with required components.
 
@@ -30,19 +31,21 @@ class ChatManager:
             display_manager: Manager for display and UI
             input_manager: Manager for user input
             mcp_manager: Manager for MCP operations
-            openai_manager: Manager for OpenAI interactions
+            openrouter_manager: Manager for OpenRouter interactions
             chat_id: Optional ID of existing chat to load
             verbose: Whether to show verbose output
+            model: Model to use for chat (default: claude-3.5-sonnet)
         """
         self.service = ChatService(repository)
+        self.model = model
         self.display_manager = display_manager
         self.input_manager = input_manager
         self.mcp_manager = mcp_manager
-        self.openai_manager = openai_manager
+        self.openrouter_manager = openrouter_manager
         self.verbose = verbose
 
         # Set up cross-manager references
-        self.openai_manager.set_display_manager(display_manager)
+        self.openrouter_manager.set_display_manager(display_manager)
 
         # Initialize chat state
         self.current_chat: Optional[Chat] = None
@@ -59,11 +62,13 @@ class ChatManager:
             self.display_manager.print_error(f"Chat {chat_id} not found")
             raise ValueError(f"Chat {chat_id} not found")
 
-        # Convert existing messages to OpenAI API format
+        # Convert existing messages to OpenRouter API format
         self.messages = [{
             "role": msg.role,
             "content": msg.content,
-            "timestamp": msg.timestamp
+            "timestamp": msg.timestamp,
+            "model": msg.model,
+            "provider": msg.provider
         } for msg in existing_chat.messages]
         self.current_chat = existing_chat
 
@@ -84,30 +89,49 @@ class ChatManager:
 
     async def process_response(self, response_content: str) -> str:
         """Process assistant response and handle tool use recursively"""
-        if not self.openai_manager.contains_tool_use(response_content):
+        # Extract content and metadata based on response type
+        content = response_content
+        provider = None
+        model = None
+        if isinstance(response_content, SimpleNamespace):
+            content = response_content.content
+            provider = getattr(response_content, 'provider', None)
+            model = getattr(response_content, 'model', None)
+
+        if not self.openrouter_manager.contains_tool_use(content):
             # Base case: no tool use, append message and return
-            message = self.openai_manager.create_message("assistant", response_content)
+            message = self.openrouter_manager.create_message(
+                "assistant", 
+                content,
+                provider=provider,
+                model=model
+            )
             self.messages.append(message)
-            return response_content
+            return content
 
         # Handle response with tool use
-        plain_content, tool_content = self.openai_manager.split_content(response_content)
+        plain_content, tool_content = self.openrouter_manager.split_content(content)
 
         # Add assistant's message before tool use
         if plain_content:
-            message = self.openai_manager.create_message("assistant", plain_content)
+            message = self.openrouter_manager.create_message(
+                "assistant", 
+                plain_content,
+                provider=provider,
+                model=model
+            )
             self.messages.append(message)
 
         # Get user confirmation for tool execution
         if not self.get_user_confirmation(tool_content):
             no_exec_msg = "Tool execution cancelled by user."
             self.display_manager.console.print(f"\n[yellow]{no_exec_msg}[/yellow]")
-            message = self.openai_manager.create_message("user", no_exec_msg)
+            message = self.openrouter_manager.create_message("user", no_exec_msg)
             self.messages.append(message)
             return no_exec_msg
 
         # Execute tool and get results
-        mcp_tool = self.mcp_manager.extract_mcp_tool_use(response_content)
+        mcp_tool = self.mcp_manager.extract_mcp_tool_use(tool_content)
         if mcp_tool:
             server_name, tool_name, arguments = mcp_tool
             tool_results = await self.mcp_manager.execute_tool(server_name, tool_name, arguments)
@@ -116,12 +140,12 @@ class ChatManager:
             tool_results = self.input_manager.get_input()
 
         # Add tool results as user message
-        message = self.openai_manager.create_message("user", tool_results)
+        message = self.openrouter_manager.create_message("user", tool_results)
         self.messages.append(message)
         self.display_manager.display_message_panel(message)
 
-        # Get next response from OpenAI with system prompt
-        next_response = await self.openai_manager.get_chat_response(self.messages, self.system_prompt)
+        # Get next response from OpenRouter with system prompt
+        next_response = await self.openrouter_manager.get_chat_response(self.messages, self.system_prompt)
         return await self.process_response(next_response)
 
     def persist_chat(self):
@@ -131,18 +155,14 @@ class ChatManager:
         else:
             self.current_chat = self.service.update_chat(self.current_chat.id, self.messages)
 
-    async def initialize_chat(self):
-        """Initialize chat with system prompt"""
-        from .system import get_system_prompt
-        self.system_prompt = await get_system_prompt(self.mcp_manager)
-
     async def run(self):
         """Run the chat session"""
         async with AsyncExitStack() as exit_stack:
             try:
-                # Initialize MCP and system prompt only for new chats
-                await self.mcp_manager.connect_to_servers(MCP_SETTINGS_FILE, exit_stack)
-                await self.initialize_chat()
+                if "claude-3.5-sonnet" in self.model:
+                    # Initialize MCP and system prompt only for claude-3.5-sonnet
+                    await self.mcp_manager.connect_to_servers(MCP_SETTINGS_FILE, exit_stack)
+                    self.system_prompt = await get_system_prompt(self.mcp_manager)
 
                 if self.verbose:
                     self.display_manager.display_help()
@@ -175,7 +195,7 @@ class ChatManager:
                             continue
 
                     # Add user message to history
-                    user_message = self.openai_manager.create_message("user", user_input)
+                    user_message = self.openrouter_manager.create_message("user", user_input)
                     self.messages.append(user_message)
 
                     # Clear input line and display user message
@@ -183,8 +203,8 @@ class ChatManager:
                     self.display_manager.display_message_panel(user_message)
 
                     try:
-                        # Get streaming response from OpenAI with system prompt
-                        response = await self.openai_manager.get_chat_response(self.messages, self.system_prompt)
+                        # Get streaming response from OpenRouter with system prompt
+                        response = await self.openrouter_manager.get_chat_response(self.messages, self.system_prompt)
 
                         # Process response and handle tool use
                         await self.process_response(response)
