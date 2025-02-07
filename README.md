@@ -20,7 +20,20 @@ A powerful command-line interface chat application that brings AI conversations 
 ## ⚡ Quick Start
 
 ### Prerequisites
-First, install `uv` by following the [official installation guide](https://docs.astral.sh/uv/getting-started/installation/).
+
+Required:
+1. uv
+2. OpenRouter API key
+
+Setup Instructions:
+1. **uv**
+   - Follow the [official installation guide](https://docs.astral.sh/uv/getting-started/installation/)
+   - uv will automatically manage Python installation
+
+2. **OpenRouter API key**
+   - Visit [OpenRouter Settings](https://openrouter.ai/settings/keys)
+   - Create a new API key
+   - Save it for the initialization step
 
 ### Run without Installation
 ```bash
