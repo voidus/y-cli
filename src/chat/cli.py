@@ -64,6 +64,7 @@ def init():
         toml.dump(config, f)
 
     click.echo(f"\nConfiguration saved to: {config_file}")
+    click.echo(f"Chat data will be stored in: {os.path.expanduser(config['data_file'])}")
     click.echo("\nOptional settings that can be edited in the config file:")
     click.echo("- default_model: The default model to use for chat")
     click.echo("- openrouter_base_url: OpenRouter API base URL")
