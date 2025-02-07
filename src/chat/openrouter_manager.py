@@ -5,6 +5,7 @@ import httpx
 from .display_manager import DisplayManager
 from .util import get_iso8601_timestamp, get_unix_timestamp
 from .config import OPENROUTER_CONFIG_FILE, DEFAULT_MODEL
+from .models import Message
 
 class OpenRouterManager:
     def __init__(self, api_key: str, base_url: Optional[str] = None, model: str = DEFAULT_MODEL):
@@ -34,70 +35,72 @@ class OpenRouterManager:
         """Set the display manager for streaming responses"""
         self.display_manager = display_manager
 
-    def create_message(self, role: str, content: str, reasoning_content: Optional[str] = None, include_timestamp: bool = True, provider: Optional[str] = None, model: Optional[str] = None) -> Dict:
-        """Create a message dictionary with optional timestamps, provider, and model.
+    def create_message(self, role: str, content: str, reasoning_content: Optional[str] = None, include_timestamp: bool = True, provider: Optional[str] = None, model: Optional[str] = None) -> Message:
+        """Create a Message object with optional timestamps, provider, and model.
 
         Args:
             role: Message role (user/assistant/system)
             content: Message content
+            reasoning_content: Optional reasoning content
             include_timestamp: Whether to include timestamps
             provider: Optional provider of the message
             model: Optional model used to generate the message
 
         Returns:
-            Dict: Message dictionary with role, content, and optional fields
+            Message: Message object with role, content, and optional fields
         """
-        message = {
+        message_data = {
             "role": role,
             "content": content
         }
 
         if reasoning_content is not None:
-            message["reasoning_content"] = reasoning_content
+            message_data["reasoning_content"] = reasoning_content
         
         if include_timestamp:
-            message.update({
+            message_data.update({
                 "timestamp": get_iso8601_timestamp(),
                 "unix_timestamp": get_unix_timestamp()
             })
             
         if provider is not None:
-            message["provider"] = provider
+            message_data["provider"] = provider
             
         if model is not None:
-            message["model"] = model
+            message_data["model"] = model
             
-        return message
+        return Message.from_dict(message_data)
 
-    def prepare_messages_for_completion(self, messages: List[Dict], system_message: Optional[str] = None) -> List[Dict]:
+    def prepare_messages_for_completion(self, messages: List[Message], system_prompt: Optional[str] = None) -> List[Dict]:
         """Prepare messages for completion by adding system message and cache_control.
         
         Args:
-            messages: Original list of message dictionaries
-            system_message: Optional system message to add at the start
+            messages: Original list of Message objects
+            system_prompt: Optional system message to add at the start
             
         Returns:
             List[Dict]: New message list with system message and cache_control added
         """
         # Create new list starting with system message if provided
         prepared_messages = []
-        if system_message:
-            sys_msg = self.create_message("system", system_message, include_timestamp=False)
-            if isinstance(sys_msg["content"], str):
-                sys_msg["content"] = [{"type": "text", "text": sys_msg["content"]}]
+        if system_prompt:
+            system_message = self.create_message("system", system_prompt, include_timestamp=False)
+            system_message_dict = system_message.to_dict()
+            if isinstance(system_message_dict["content"], str):
+                system_message_dict["content"] = [{"type": "text", "text": system_message_dict["content"]}]
             # add cache_control only to claude-3.5-sonnet model
             if "claude-3.5-sonnet" in self.model:
-                for part in sys_msg["content"]:
+                for part in system_message_dict["content"]:
                     if part.get("type") == "text":
                         part["cache_control"] = {"type": "ephemeral"}
-            prepared_messages.append(sys_msg)
+            prepared_messages.append(system_message_dict)
             
         # Add original messages
         for msg in messages:
-            msg_copy = dict(msg)
-            if isinstance(msg["content"], list):
-                msg_copy["content"] = [dict(part) for part in msg["content"]]
-            prepared_messages.append(msg_copy)
+            msg_dict = msg.to_dict()
+            if isinstance(msg_dict["content"], list):
+                msg_dict["content"] = [dict(part) for part in msg_dict["content"]]
+            prepared_messages.append(msg_dict)
         
         # Find last user message
         if "claude-3.5-sonnet" in self.model:     
@@ -117,29 +120,30 @@ class OpenRouterManager:
         
         return prepared_messages
 
-    async def get_chat_response(self, messages: List[Dict], system_message: Optional[str] = None) -> Union[SimpleNamespace, AsyncGenerator[SimpleNamespace, None]]:
+    async def call_chat_completions(self, messages: List[Message], system_prompt: Optional[str] = None) -> Message:
         """Get a streaming chat response from OpenRouter.
 
         Args:
-            messages: List of message dictionaries
-            system_message: Optional system message to add at the start
+            messages: List of Message objects
+            system_prompt: Optional system prompt to add at the start
 
         Returns:
-            Union[str, AsyncGenerator[SimpleNamespace, None]]: Either complete response text or async generator of response chunks
+            Message: The assistant's response message
 
         Raises:
             Exception: If API call fails
         """
         # Prepare messages with cache_control and system message
-        prepared_messages = self.prepare_messages_for_completion(messages, system_message)
+        prepared_messages = self.prepare_messages_for_completion(messages, system_prompt)
         openrouter_config = self.load_openrouter_config(OPENROUTER_CONFIG_FILE)
         provider_config = openrouter_config.get('provider', {})
         body = {
             "model": self.model,
             "messages": prepared_messages,
-            "stream": True,
-            "provider": provider_config
+            "stream": True
         }
+        if provider_config:
+            body["provider"] = provider_config
         if "deepseek-r1" in self.model:
             body["include_reasoning"] = True
         try:
@@ -158,51 +162,15 @@ class OpenRouterManager:
                 ) as response:
                     response.raise_for_status()
                     
-                    if self.display_manager:
-                        # Store provider and model info from first response chunk
-                        provider = None
-                        model = None
-                        
-                        async def generate_chunks():
-                            nonlocal provider, model
-                            async for chunk in response.aiter_lines():
-                                if chunk.startswith("data: "):
-                                    try:
-                                        data = json.loads(chunk[6:])
-                                        # Extract provider and model from first chunk that has them
-                                        if provider is None and data.get("provider"):
-                                            provider = data["provider"]
-                                        if model is None and data.get("model"):
-                                            model = data["model"]
-                                            
-                                        if data.get("choices"):
-                                            delta = data["choices"][0].get("delta", {})
-                                            content = delta.get("content")
-                                            reasoning_content = delta.get("reasoning")
-                                            if content is not None or reasoning_content is not None:
-                                                chunk_data = SimpleNamespace(
-                                                    choices=[SimpleNamespace(
-                                                        delta=SimpleNamespace(content=content, reasoning_content=reasoning_content)
-                                                    )],
-                                                    model=model,
-                                                    provider=provider
-                                                )
-                                                yield chunk_data
-                                    except json.JSONDecodeError:
-                                        continue
-                        content_full, reasoning_content_full = await self.display_manager.stream_response(generate_chunks())
-                        return SimpleNamespace(
-                            content=content_full,
-                            reasoning_content=reasoning_content_full,
-                            provider=provider,
-                            model=model
-                        )
-                    else:
-                        # Fallback for when display manager isn't set
-                        collected_content = []
-                        collected_reasoning_content = []
-                        provider = None
-                        model = None
+                    if not self.display_manager:
+                        raise Exception("Display manager not set for streaming response")
+                    
+                    # Store provider and model info from first response chunk
+                    provider = None
+                    model = None
+                    
+                    async def generate_chunks():
+                        nonlocal provider, model
                         async for chunk in response.aiter_lines():
                             if chunk.startswith("data: "):
                                 try:
@@ -212,22 +180,32 @@ class OpenRouterManager:
                                         provider = data["provider"]
                                     if model is None and data.get("model"):
                                         model = data["model"]
+                                        
                                     if data.get("choices"):
                                         delta = data["choices"][0].get("delta", {})
                                         content = delta.get("content")
                                         reasoning_content = delta.get("reasoning")
-                                        if content is not None:
-                                            collected_content.append(content)
-                                        if reasoning_content is not None:
-                                            collected_reasoning_content.append(reasoning_content)
+                                        if content is not None or reasoning_content is not None:
+                                            chunk_data = SimpleNamespace(
+                                                choices=[SimpleNamespace(
+                                                    delta=SimpleNamespace(content=content, reasoning_content=reasoning_content)
+                                                )],
+                                                model=model,
+                                                provider=provider
+                                            )
+                                            yield chunk_data
                                 except json.JSONDecodeError:
                                     continue
-                        return SimpleNamespace(
-                            content="".join(collected_content),
-                            reasoning_content="".join(collected_reasoning_content),
-                            provider=provider,
-                            model=model
-                        )
+                    content_full, reasoning_content_full = await self.display_manager.stream_response(generate_chunks())
+                    # build assistant message
+                    assistant_message = self.create_message(
+                        "assistant",
+                        content_full,
+                        reasoning_content=reasoning_content_full,
+                        provider=provider,
+                        model=model
+                    )
+                    return assistant_message
                     
         except httpx.HTTPError as e:
             raise Exception(f"HTTP error getting chat response: {str(e)}")

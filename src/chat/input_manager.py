@@ -3,12 +3,13 @@ import pyperclip
 from typing import List, Optional, Tuple
 from prompt_toolkit import prompt
 from rich.console import Console
+from .models import Message
 
 class InputManager:
     def __init__(self, console: Console):
         self.console = console
 
-    def get_input(self) -> str:
+    def get_input(self) -> Tuple[str, bool, int]:
         """Get user input with support for multi-line input using EOF flags.
 
         Multi-line input starts with <<EOF and ends with EOF. For example:
@@ -18,9 +19,12 @@ class InputManager:
         EOF
 
         Returns:
-            str: The user input, either single line or multiple lines joined with newlines.
+            Tuple[str, bool, int]: A tuple containing:
+                - The user input, either single line or multiple lines joined with newlines
+                - A boolean indicating if the input was multi-line (True) or single-line (False)
+                - The number of lines in the input
         """
-        text = prompt('请输入: ', in_thread=True)
+        text = prompt('Enter: ', in_thread=True)
         text = text.rstrip()
 
         # Check for multi-line input start flag
@@ -28,41 +32,41 @@ class InputManager:
             lines = []
             while True:
                 line = prompt(in_thread=True)
-                line = line.rstrip()
                 if line == "EOF":
                     break
-                lines.append(line)
-            return "\n".join(lines)
+                lines.extend(line.split("\n"))
+            return ("\n".join(lines), True, len(lines))
 
-        return text
+        lines = text.split("\n")
+        return (text, False, len(lines))
 
-    def handle_copy_command(self, command: str, code_blocks: List[str], last_assistant_message: Optional[str]) -> bool:
-        """Handle the copy command for code blocks or last message.
+    def handle_copy_command(self, command: str, messages: List[Message]) -> bool:
+        """Handle the copy command for messages by index.
 
         Args:
-            command: The copy command (e.g., 'copy 1' or 'copy 0')
-            code_blocks: List of available code blocks
-            last_assistant_message: Content of the last assistant message
+            command: The copy command (e.g., 'copy 1')
+            messages: List of all chat messages
 
         Returns:
             bool: True if command was handled, False otherwise
         """
         try:
-            block_num = int(command.split()[1])
-            if block_num == 0:
-                if last_assistant_message:
-                    pyperclip.copy(last_assistant_message.strip())
-                    self.console.print("[green]Copied last assistant message to clipboard[/green]")
-                else:
-                    self.console.print("[yellow]No previous assistant message to copy[/yellow]")
-            elif 1 <= block_num <= len(code_blocks):
-                pyperclip.copy(code_blocks[block_num - 1])
-                self.console.print(f"[green]Copied code block [{block_num}] to clipboard[/green]")
+            msg_idx = int(command.split()[1])
+            if 0 <= msg_idx < len(messages):
+                content = messages[msg_idx].content
+                if isinstance(content, list):
+                    content = next((part['text'] for part in content if part['type'] == 'text'), '')
+                pyperclip.copy(content.strip())
+                self.console.print(f"[green]Copied message [{msg_idx}] to clipboard[/green]")
             else:
-                self.console.print("[yellow]Invalid code block number[/yellow]")
+                # Show available message indices
+                msg_indices = [f"[{i}] {msg.role}" for i, msg in enumerate(messages)]
+                self.console.print("[yellow]Invalid message index. Available messages:[/yellow]")
+                for idx in msg_indices:
+                    self.console.print(idx)
             return True
         except (IndexError, ValueError):
-            self.console.print("[yellow]Invalid copy command. Use 'copy <number>' or 'copy 0' for last message[/yellow]")
+            self.console.print("[yellow]Invalid copy command. Use 'copy <number>' to copy a message[/yellow]")
             return True
 
     def is_exit_command(self, text: str) -> bool:
@@ -75,7 +79,3 @@ class InputManager:
             bool: True if the input is an exit command, False otherwise
         """
         return text.lower() in ['exit', 'quit']
-
-    def clear_input_line(self):
-        """Clear the current input line using ANSI escape sequences"""
-        sys.stdout.write("\033[F")  # Cursor up one line
