@@ -27,22 +27,20 @@ class OpenRouterManager:
             with open(config_file, 'r', encoding="utf-8") as f:
                 config = json.load(f)
             return config.get('config', {})
-        except (FileNotFoundError, json.JSONDecodeError) as e:
-            self.console.print(f"[red]Error loading openrouter config: {str(e)}[/red]")
+        except (FileNotFoundError, json.JSONDecodeError):
             return {}
 
     def set_display_manager(self, display_manager: DisplayManager):
         """Set the display manager for streaming responses"""
         self.display_manager = display_manager
 
-    def create_message(self, role: str, content: str, reasoning_content: Optional[str] = None, include_timestamp: bool = True, provider: Optional[str] = None, model: Optional[str] = None) -> Message:
+    def create_message(self, role: str, content: str, reasoning_content: Optional[str] = None, provider: Optional[str] = None, model: Optional[str] = None) -> Message:
         """Create a Message object with optional timestamps, provider, and model.
 
         Args:
             role: Message role (user/assistant/system)
             content: Message content
             reasoning_content: Optional reasoning content
-            include_timestamp: Whether to include timestamps
             provider: Optional provider of the message
             model: Optional model used to generate the message
 
@@ -54,37 +52,36 @@ class OpenRouterManager:
             "content": content
         }
 
+        message_data.update({
+            "timestamp": get_iso8601_timestamp(),
+            "unix_timestamp": get_unix_timestamp()
+        })
+
         if reasoning_content is not None:
             message_data["reasoning_content"] = reasoning_content
-        
-        if include_timestamp:
-            message_data.update({
-                "timestamp": get_iso8601_timestamp(),
-                "unix_timestamp": get_unix_timestamp()
-            })
-            
+
         if provider is not None:
             message_data["provider"] = provider
-            
+
         if model is not None:
             message_data["model"] = model
-            
+
         return Message.from_dict(message_data)
 
     def prepare_messages_for_completion(self, messages: List[Message], system_prompt: Optional[str] = None) -> List[Dict]:
         """Prepare messages for completion by adding system message and cache_control.
-        
+
         Args:
             messages: Original list of Message objects
             system_prompt: Optional system message to add at the start
-            
+
         Returns:
             List[Dict]: New message list with system message and cache_control added
         """
         # Create new list starting with system message if provided
         prepared_messages = []
         if system_prompt:
-            system_message = self.create_message("system", system_prompt, include_timestamp=False)
+            system_message = self.create_message("system", system_prompt)
             system_message_dict = system_message.to_dict()
             if isinstance(system_message_dict["content"], str):
                 system_message_dict["content"] = [{"type": "text", "text": system_message_dict["content"]}]
@@ -94,16 +91,16 @@ class OpenRouterManager:
                     if part.get("type") == "text":
                         part["cache_control"] = {"type": "ephemeral"}
             prepared_messages.append(system_message_dict)
-            
+
         # Add original messages
         for msg in messages:
             msg_dict = msg.to_dict()
             if isinstance(msg_dict["content"], list):
                 msg_dict["content"] = [dict(part) for part in msg_dict["content"]]
             prepared_messages.append(msg_dict)
-        
+
         # Find last user message
-        if "claude-3.5-sonnet" in self.model:     
+        if "claude-3.5-sonnet" in self.model:
             for msg in reversed(prepared_messages):
                 if msg["role"] == "user":
                     if isinstance(msg["content"], str):
@@ -117,7 +114,7 @@ class OpenRouterManager:
                         msg["content"].append(last_text_part)
                     last_text_part["cache_control"] = {"type": "ephemeral"}
                     break
-        
+
         return prepared_messages
 
     async def call_chat_completions(self, messages: List[Message], system_prompt: Optional[str] = None) -> Message:
@@ -161,14 +158,14 @@ class OpenRouterManager:
                     timeout=60.0
                 ) as response:
                     response.raise_for_status()
-                    
+
                     if not self.display_manager:
                         raise Exception("Display manager not set for streaming response")
-                    
+
                     # Store provider and model info from first response chunk
                     provider = None
                     model = None
-                    
+
                     async def generate_chunks():
                         nonlocal provider, model
                         async for chunk in response.aiter_lines():
@@ -180,7 +177,7 @@ class OpenRouterManager:
                                         provider = data["provider"]
                                     if model is None and data.get("model"):
                                         model = data["model"]
-                                        
+
                                     if data.get("choices"):
                                         delta = data["choices"][0].get("delta", {})
                                         content = delta.get("content")
@@ -206,7 +203,7 @@ class OpenRouterManager:
                         model=model
                     )
                     return assistant_message
-                    
+
         except httpx.HTTPError as e:
             raise Exception(f"HTTP error getting chat response: {str(e)}")
         except Exception as e:

@@ -85,7 +85,7 @@ class ChatService:
         for msg in chat.messages:
             if msg.role == 'system':
                 continue
-            
+
             # Add role with model/provider info if available
             header = msg.role.capitalize()
             if msg.model or msg.provider:
@@ -95,13 +95,13 @@ class ChatService:
                 if msg.provider:
                     model_info.append(f"via {msg.provider}")
                 header += f" <span class='model-info'>({' '.join(model_info)})</span>"
-            
+
             md_content += f"## {header}\n\n"
-            
+
             # Add reasoning content in a collapsible section if it exists
             if msg.reasoning_content:
                 md_content += f'<details><summary>Reasoning</summary><div class="reasoning-content">\n\n{msg.reasoning_content}\n\n</div></details>\n\n'
-            
+
             md_content += f"{msg.content}\n\n"
             md_content += f"*{msg.timestamp}*\n\n---\n\n"
 
@@ -123,14 +123,14 @@ sup { color: #6b7280; }
 hr { margin: 2rem 0; border: 0; border-top: 1px solid #eee; }
 .references { background: #f9fafb; padding: 1rem; border-radius: 0.5rem; }
 .images { margin: 1rem 0; }
-details { 
-    background: #f8fafc; 
+details {
+    background: #f8fafc;
     border: 1px solid #e2e8f0;
     border-radius: 0.5rem;
     margin: 1rem 0;
     padding: 0.5rem;
 }
-summary { 
+summary {
     cursor: pointer;
     font-weight: 500;
     color: #4b5563;

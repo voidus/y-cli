@@ -16,10 +16,59 @@ from .config import (
 @click.group()
 def cli():
     """Command-line interface for chat application."""
-    if not OPENROUTER_API_KEY:
+    # Skip API key check for init command
+    if click.get_current_context().invoked_subcommand != 'init' and not OPENROUTER_API_KEY:
         click.echo("Error: OpenRouter API key is not set")
-        click.echo("Please set it in the config file or OPENROUTER_API_KEY environment variable")
+        click.echo("Please set it using 'y-cli init' or set OPENROUTER_API_KEY environment variable")
         raise click.Abort()
+
+@cli.command()
+def init():
+    """Initialize y-cli configuration with required settings.
+
+    Creates a config file at ~/.config/y-cli/config.toml and prompts for required settings.
+    """
+    import toml
+    from .config import get_default_config
+
+    # Get config file path
+    config_file = os.path.expanduser("~/.config/y-cli/config.toml")
+
+    # Create config directory if it doesn't exist
+    os.makedirs(os.path.dirname(config_file), exist_ok=True)
+
+    # Load existing config or get defaults
+    if os.path.exists(config_file):
+        with open(config_file, "r") as f:
+            config = toml.load(f)
+    else:
+        config = get_default_config()
+
+    # Check if API key is already set in environment
+    if OPENROUTER_API_KEY:
+        click.echo("OpenRouter API key is already set in environment")
+        config["openrouter_api_key"] = OPENROUTER_API_KEY
+    else:
+        # Prompt for OpenRouter API key
+        api_key = click.prompt(
+            "Please enter your OpenRouter API key",
+            type=str,
+            default=config.get("openrouter_api_key", ""),
+            show_default=False
+        )
+        # Update config with new API key
+        config["openrouter_api_key"] = api_key
+
+    # Write updated config
+    with open(config_file, "w") as f:
+        toml.dump(config, f)
+
+    click.echo(f"\nConfiguration saved to: {config_file}")
+    click.echo("\nOptional settings that can be edited in the config file:")
+    click.echo("- default_model: The default model to use for chat")
+    click.echo("- openrouter_base_url: OpenRouter API base URL")
+    click.echo("- proxy_host/proxy_port: Network proxy settings")
+    click.echo("- s3_bucket/cloudfront_distribution_id: For sharing chats")
 
 @cli.command()
 @click.option('--chat-id', '-c', help='Continue from an existing chat')
