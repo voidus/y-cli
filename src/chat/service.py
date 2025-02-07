@@ -40,43 +40,24 @@ class ChatService:
         """Get a specific chat by ID"""
         return self.repository.get_chat(chat_id)
 
-    def create_chat(self, messages: List[Dict]) -> Chat:
+    def create_chat(self, messages: List[Message]) -> Chat:
         """Create a new chat with messages"""
         timestamp = self._create_timestamp()
         chat = Chat(
             id=self._generate_id(),
             create_time=timestamp,
             update_time=timestamp,
-            messages=[Message(
-                role=msg['role'],
-                content=msg['content'],
-                reasoning_content=msg.get('reasoning_content'),
-                timestamp=msg.get('timestamp', timestamp),
-                unix_timestamp=msg.get('unix_timestamp', get_unix_timestamp()),
-                model=msg.get('model'),
-                provider=msg.get('provider')
-            ) for msg in messages if msg['role'] != 'system']
+            messages=[msg for msg in messages if msg.role != 'system']
         )
         return self.repository.add_chat(chat)
 
-    def update_chat(self, chat_id: str, messages: List[Dict]) -> Chat:
+    def update_chat(self, chat_id: str, messages: List[Message]) -> Chat:
         """Update an existing chat's messages"""
         chat = self.get_chat(chat_id)
         if not chat:
             raise ValueError(f"Chat with id {chat_id} not found")
 
-        timestamp = self._create_timestamp()
-        new_messages = [Message(
-            role=msg['role'],
-            content=msg['content'],
-            reasoning_content=msg.get('reasoning_content'),
-            timestamp=msg.get('timestamp', timestamp),
-            unix_timestamp=msg.get('unix_timestamp', get_unix_timestamp()),
-            model=msg.get('model'),
-            provider=msg.get('provider')
-        ) for msg in messages if msg['role'] != 'system']
-
-        chat.update_messages(new_messages)
+        chat.update_messages(messages)
         return self.repository.update_chat(chat)
 
     def delete_chat(self, chat_id: str) -> bool:

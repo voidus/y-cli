@@ -47,10 +47,26 @@ class ChatRepository:
         chats.sort(key=lambda x: x.create_time, reverse=True)
 
         if keyword:
-            chats = [
-                chat for chat in chats
-                if any(keyword.lower() in msg.content.lower() for msg in chat.messages)
-            ]
+            keyword_lower = keyword.lower()
+            filtered_chats = []
+            for chat in chats:
+                for msg in chat.messages:
+                    if isinstance(msg.content, str):
+                        if keyword_lower in msg.content.lower():
+                            filtered_chats.append(chat)
+                            break
+                    else:  # content is a list of parts
+                        for part in msg.content:
+                            if isinstance(part, dict) and 'text' in part:
+                                if keyword_lower in part['text'].lower():
+                                    filtered_chats.append(chat)
+                                    break
+                        else:
+                            continue
+                        break
+                if len(filtered_chats) >= limit:
+                    break
+            chats = filtered_chats
 
         return chats[:limit]
 

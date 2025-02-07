@@ -11,6 +11,7 @@ from .mcp_manager import MCPManager
 from .openrouter_manager import OpenRouterManager
 from .config import MCP_SETTINGS_FILE, DEFAULT_MODEL
 from .system import get_system_prompt
+from .models import Message
 
 class ChatManager:
     def __init__(
@@ -49,7 +50,7 @@ class ChatManager:
 
         # Initialize chat state
         self.current_chat: Optional[Chat] = None
-        self.messages: List[Dict] = []
+        self.messages: List[Message] = []
         self.system_prompt: Optional[str] = None
 
         if chat_id:
@@ -62,15 +63,7 @@ class ChatManager:
             self.display_manager.print_error(f"Chat {chat_id} not found")
             raise ValueError(f"Chat {chat_id} not found")
 
-        # Convert existing messages to OpenRouter API format
-        self.messages = [{
-            "role": msg.role,
-            "content": msg.content,
-            "reasoning_content": msg.reasoning_content,
-            "timestamp": msg.timestamp,
-            "model": msg.model,
-            "provider": msg.provider
-        } for msg in existing_chat.messages]
+        self.messages = existing_chat.messages
         self.current_chat = existing_chat
 
         if self.verbose:
@@ -87,47 +80,40 @@ class ChatManager:
             elif response in ['n', 'no']:
                 return False
             self.display_manager.console.print("[yellow]Please answer 'y' or 'n'[/yellow]")
+    
+    async def process_user_message(self, user_message: Message):
+        self.messages.append(user_message)
+        self.persist_chat()
+        self.display_manager.display_message_panel(user_message)
 
-    async def process_response(self, response: SimpleNamespace) -> str:
+        assistant_message = await self.openrouter_manager.call_chat_completions(self.messages, self.system_prompt)
+        await self.process_assistant_message(assistant_message)
+        self.persist_chat()
+        self.display_manager.display_message_panel(assistant_message)
+
+    async def process_assistant_message(self, assistant_message: Message):
         """Process assistant response and handle tool use recursively"""
         # Extract content and metadata based on response type
-        content = response.content
-        reasoning_content = response.reasoning_content
-        provider = getattr(response, 'provider', None)
-        model = getattr(response, 'model', None)
+        content = assistant_message.content
 
         if not self.openrouter_manager.contains_tool_use(content):
-            # Base case: no tool use, append message and return
-            message = self.openrouter_manager.create_message(
-                "assistant",
-                content,
-                reasoning_content=reasoning_content,
-                provider=provider,
-                model=model
-            )
-            self.messages.append(message)
-            return content
+            self.messages.append(assistant_message)
+            return
 
         # Handle response with tool use
         plain_content, tool_content = self.openrouter_manager.split_content(content)
 
-        # Add assistant's message before tool use
-        if plain_content:
-            message = self.openrouter_manager.create_message(
-                "assistant", 
-                plain_content,
-                provider=provider,
-                model=model
-            )
-            self.messages.append(message)
+        # Update last assistant message with plain content
+        assistant_message.content = plain_content
+        self.messages.append(assistant_message)
 
         # Get user confirmation for tool execution
         if not self.get_user_confirmation(tool_content):
             no_exec_msg = "Tool execution cancelled by user."
             self.display_manager.console.print(f"\n[yellow]{no_exec_msg}[/yellow]")
-            message = self.openrouter_manager.create_message("user", no_exec_msg)
-            self.messages.append(message)
-            return no_exec_msg
+            user_message = self.openrouter_manager.create_message("user", no_exec_msg)
+            self.messages.append(user_message)
+            return
 
         # Execute tool and get results
         mcp_tool = self.mcp_manager.extract_mcp_tool_use(tool_content)
@@ -135,17 +121,11 @@ class ChatManager:
             server_name, tool_name, arguments = mcp_tool
             tool_results = await self.mcp_manager.execute_tool(server_name, tool_name, arguments)
         else:
-            self.display_manager.console.print("\n[yellow]Tool use detected in response. Please provide the tool results:[/yellow]")
-            tool_results = self.input_manager.get_input()
+            tool_results = "Tool execution not supported for this response."
+            return
 
         # Add tool results as user message
-        message = self.openrouter_manager.create_message("user", tool_results)
-        self.messages.append(message)
-        self.display_manager.display_message_panel(message)
-
-        # Get next response from OpenRouter with system prompt
-        next_response = await self.openrouter_manager.get_chat_response(self.messages, self.system_prompt)
-        return await self.process_response(next_response)
+        user_message = self.openrouter_manager.create_message("user", tool_results)
 
     def persist_chat(self):
         """Persist current chat state"""
@@ -171,8 +151,9 @@ class ChatManager:
                     self.display_manager.display_chat_history(self.messages)
 
                 while True:
-                    user_input = self.input_manager.get_input()
-
+                    # Get user input, multi-line flag, and line count
+                    user_input, is_multi_line, line_count = self.input_manager.get_input()
+                    
                     if self.input_manager.is_exit_command(user_input):
                         self.display_manager.console.print("\n[yellow]Goodbye![/yellow]")
                         break
@@ -183,36 +164,18 @@ class ChatManager:
 
                     # Handle copy command
                     if user_input.lower().startswith('copy '):
-                        last_assistant = next((msg for msg in reversed(self.messages)
-                                            if msg['role'] == 'assistant'), None)
-                        last_content = last_assistant['content'] if last_assistant else None
-                        if self.input_manager.handle_copy_command(
-                            user_input,
-                            self.display_manager.code_blocks,
-                            last_content
-                        ):
+                        if self.input_manager.handle_copy_command(user_input, self.messages):
                             continue
 
                     # Add user message to history
                     user_message = self.openrouter_manager.create_message("user", user_input)
-                    self.messages.append(user_message)
+                    if is_multi_line:
+                        # clear <<EOF line and EOF line
+                        self.display_manager.clear_lines(2)
 
-                    # Clear input line and display user message
-                    self.input_manager.clear_input_line()
-                    self.display_manager.display_message_panel(user_message)
+                    self.display_manager.clear_lines(line_count)
 
-                    try:
-                        # Get streaming response from OpenRouter with system prompt
-                        response = await self.openrouter_manager.get_chat_response(self.messages, self.system_prompt)
-
-                        # Process response and handle tool use
-                        await self.process_response(response)
-
-                        # Persist chat after each message
-                        self.persist_chat()
-                    except Exception as e:
-                        self.display_manager.print_error(str(e))
-                        break
+                    await self.process_user_message(user_message)
 
             except (KeyboardInterrupt, EOFError):
                 self.display_manager.console.print("\n[yellow]Chat interrupted. Exiting...[/yellow]")
