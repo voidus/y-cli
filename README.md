@@ -16,6 +16,30 @@ A powerful command-line interface chat application that brings AI conversations 
 ### reasoning content
 [![asciicast](https://asciinema.org/a/701903.svg)](https://asciinema.org/a/701903)
 
+## ⚡ Quick Start
+
+### Prerequisites
+First, install `uv` by following the [official installation guide](https://docs.astral.sh/uv/getting-started/installation/).
+
+### Run without Installation
+```bash
+uvx y-cli
+```
+
+### Install with uv tool
+```bash
+uv tool install y-cli
+```
+
+### Initialize
+```bash
+y-cli init
+```
+
+### Start Chat
+```bash
+y-cli chat
+```
 
 ## 🛠️ Usage
 
