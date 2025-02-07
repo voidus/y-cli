@@ -1,11 +1,11 @@
 # Y CLI 🚀
 
-A powerful command-line interface chat application that brings AI conversations to your terminal.
+A tiny command-line interface chat application that brings AI conversations to your terminal.
 
 ## ✨ Features
 
 - 💬 Interactive chat interface
-- 📝 All chat data stored in simple JSONL files for easy access and portability
+- 📝 All chat data stored in single JSONL files for easy access and sync
 - 🔗 MCP (Model Context Protocol) client support
 - 🤔 Deepseek-r1 reasoning content support for enhanced AI responses
 
