@@ -5,6 +5,7 @@ A powerful command-line interface chat application that brings AI conversations 
 ## ✨ Features
 
 - 💬 Interactive chat interface
+- 📝 All chat data stored in simple JSONL files for easy access and portability
 - 🔗 MCP (Model Context Protocol) client support
 - 🤔 Deepseek-r1 reasoning content support for enhanced AI responses
 
