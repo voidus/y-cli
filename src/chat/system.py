@@ -73,6 +73,7 @@ async def format_server_info(sessions: Dict[str, ClientSession]) -> str:
 
 async def get_system_prompt(mcp_client) -> str:
     """Generate the complete system prompt including MCP server information"""
+    # copy from https://github.com/cline/cline/blob/main/src/core/prompts/system.ts
     base_prompt = """You are y, my private assistant.
 
 ====
