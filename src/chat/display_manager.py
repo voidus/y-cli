@@ -21,7 +21,7 @@ custom_theme = Theme({
 class DisplayManager:
     def __init__(self):
         self.console = Console(theme=custom_theme)
-        
+
     def display_message_panel(self, message: Message, index: Optional[int] = None):
         """Display a message in a panel with role-colored borders.
 
@@ -32,7 +32,7 @@ class DisplayManager:
         timestamp = f"[timestamp]{message.timestamp}[/timestamp]"
         role = f"[{message.role}]{message.role.capitalize()}[/{message.role}]"
         index_str = f"[{index}] " if index is not None else ""
-        
+
         # Add model/provider info if available
         model_info = ""
         if message.model:
@@ -116,7 +116,7 @@ class DisplayManager:
                         else:
                             # Append to last line
                             content_buffer[-1] += new_content
-                    
+
                     # title info
                     model = chunk.model
                     provider = chunk.provider
@@ -131,7 +131,7 @@ class DisplayManager:
                     )
                     live.update(panel)
             live.update("")
-        
+
         self.clear_lines(1)
 
         return "".join(collected_content), "".join(collected_reasoning_content)
@@ -177,13 +177,13 @@ class DisplayManager:
         if show_traceback and hasattr(error, '__traceback__'):
             import traceback
             error_content += f"\n\n[red]Detailed error:\n{''.join(traceback.format_tb(error.__traceback__))}[/red]"
-        
+
         self.console.print(Panel(
             Markdown(error_content),
             title="[red]Error[/red]",
             border_style="red"
         ))
-    
+
     def clear_lines(self, lines: int):
         """Clear the specified number of lines using ANSI escape sequences
 

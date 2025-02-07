@@ -80,16 +80,15 @@ class ChatManager:
             elif response in ['n', 'no']:
                 return False
             self.display_manager.console.print("[yellow]Please answer 'y' or 'n'[/yellow]")
-    
+
     async def process_user_message(self, user_message: Message):
         self.messages.append(user_message)
-        self.persist_chat()
         self.display_manager.display_message_panel(user_message)
+        self.persist_chat()
 
         assistant_message = await self.openrouter_manager.call_chat_completions(self.messages, self.system_prompt)
         await self.process_assistant_message(assistant_message)
         self.persist_chat()
-        self.display_manager.display_message_panel(assistant_message)
 
     async def process_assistant_message(self, assistant_message: Message):
         """Process assistant response and handle tool use recursively"""
@@ -98,6 +97,7 @@ class ChatManager:
 
         if not self.openrouter_manager.contains_tool_use(content):
             self.messages.append(assistant_message)
+            self.display_manager.display_message_panel(assistant_message)
             return
 
         # Handle response with tool use
@@ -105,6 +105,7 @@ class ChatManager:
 
         # Update last assistant message with plain content
         assistant_message.content = plain_content
+        self.display_manager.display_message_panel(assistant_message)
         self.messages.append(assistant_message)
 
         # Get user confirmation for tool execution
@@ -126,6 +127,9 @@ class ChatManager:
 
         # Add tool results as user message
         user_message = self.openrouter_manager.create_message("user", tool_results)
+
+        # Process user message and assistant response recursively
+        await self.process_user_message(user_message)
 
     def persist_chat(self):
         """Persist current chat state"""
@@ -153,7 +157,7 @@ class ChatManager:
                 while True:
                     # Get user input, multi-line flag, and line count
                     user_input, is_multi_line, line_count = self.input_manager.get_input()
-                    
+
                     if self.input_manager.is_exit_command(user_input):
                         self.display_manager.console.print("\n[yellow]Goodbye![/yellow]")
                         break

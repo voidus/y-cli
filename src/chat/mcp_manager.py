@@ -19,7 +19,6 @@ class MCPManager:
                 settings = json.load(f)
             return settings.get('mcpServers', {})
         except (FileNotFoundError, json.JSONDecodeError) as e:
-            self.console.print(f"[red]Error loading MCP settings: {str(e)}[/red]")
             return {}
 
     async def connect_to_server(self, server_name: str, server_config: dict, exit_stack: AsyncExitStack):
