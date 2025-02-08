@@ -1,4 +1,4 @@
-# Y CLI 🚀
+# y-cli 🚀
 
 A tiny command-line interface chat application that brings AI conversations to your terminal.
 
