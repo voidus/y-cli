@@ -1,4 +1,6 @@
 import re
+import time
+import asyncio
 from typing import List, Tuple, Optional
 from .models import Message
 from .util import get_iso8601_timestamp
@@ -17,6 +19,32 @@ custom_theme = Theme({
     "system": "yellow",
     "timestamp": "dim white",
 })
+
+class StreamBuffer:
+    def __init__(self, max_chars_per_second: int = 30):
+        self.buffer = ""
+        self.max_chars_per_second = max_chars_per_second
+        self.last_update_time = time.time()
+        self.last_position = 0
+
+    def add_content(self, content: str):
+        self.buffer += content
+
+    def get_next_chunk(self) -> str:
+        current_time = time.time()
+        time_diff = current_time - self.last_update_time
+        max_chars = int(self.max_chars_per_second * time_diff)
+
+        if max_chars > 0:
+            chunk = self.buffer[self.last_position:self.last_position + max_chars]
+            self.last_position += len(chunk)
+            self.last_update_time = current_time
+            return chunk
+        return ""
+
+    @property
+    def has_remaining(self) -> bool:
+        return self.last_position < len(self.buffer)
 
 class DisplayManager:
     def __init__(self):
@@ -56,12 +84,12 @@ class DisplayManager:
             border_style=message.role
         ))
 
-    async def stream_response(self, response_stream) -> Tuple[str, str]:
-        """Stream and display the response in real-time, showing content in a temporary panel
-        that updates during streaming.
+    async def _collect_stream_content(self, response_stream, stream_buffer: StreamBuffer) -> Tuple[str, str]:
+        """Collect content from the response stream and add it to the buffer.
 
         Args:
             response_stream: The streaming response from OpenRouter API
+            stream_buffer: The buffer to store content for rate-limited display
 
         Returns:
             Tuple[str, str]: A tuple containing (complete response text, reasoning text)
@@ -70,71 +98,86 @@ class DisplayManager:
         all_reasoning_content = ""
         collected_content = []
         collected_reasoning_content = []
-        timestamp = get_iso8601_timestamp()
-        role_title = f"[assistant]Assistant[/assistant]"
-        timestamp_str = f"[timestamp]{timestamp}[/timestamp]"
-        model_info = ""
-        max_lines = self.console.height - 7
-        content_buffer = deque(maxlen=max_lines)
-
         is_reasoning = False
-        with Live(console=self.console) as live:
-            async for chunk in response_stream:
-                delta = chunk.choices[0].delta
-                content = delta.content
-                reasoning_content = delta.reasoning_content
-                new_content = ""
-                if reasoning_content:
-                    # start reasoning block
-                    if not is_reasoning:
-                        is_reasoning = True
-                        new_content += "```markdown\n"
-                    new_content += reasoning_content
-                    all_reasoning_content += reasoning_content
-                    collected_reasoning_content.append(reasoning_content)
-                # end reasoning block
-                if is_reasoning and not reasoning_content:
-                    new_content += "```\n"
-                    is_reasoning = False
-                if content:
-                    new_content += content
-                    all_content += content
-                    collected_content.append(content)
-                if new_content:
-                    if not content_buffer:
-                        content_buffer.append(new_content)
-                    else:
-                        if '\n' in new_content:
-                            # if start with newline, extend all split lines
-                            if new_content.startswith('\n'):
-                                content_buffer.extend(new_content.split('\n'))
-                            else:
-                                # else last item merge first line and extend the rest
-                                part, *rest = new_content.split('\n')
-                                content_buffer[-1] += part
-                                content_buffer.extend(rest)
-                        else:
-                            # Append to last line
-                            content_buffer[-1] += new_content
 
-                    # title info
-                    model = chunk.model
-                    provider = chunk.provider
-                    provider_info = f" [{provider}]" if provider else ""
-                    model_info = f" [dim][{model}{provider_info}][/dim]"
+        async for chunk in response_stream:
+            delta = chunk.choices[0].delta
+            content = delta.content
+            reasoning_content = delta.reasoning_content
+            new_content = ""
 
-                    # Join buffer lines and wrap in panel
-                    panel = Panel(
-                        Markdown("\n".join(content_buffer)),
-                        title=f"{role_title} {timestamp_str}{model_info}",
-                        border_style="assistant"
-                    )
-                    live.update(panel)
-            live.update("")
+            if reasoning_content:
+                if not is_reasoning:
+                    is_reasoning = True
+                    new_content += "> reasoning\n"
+                new_content += reasoning_content
+                all_reasoning_content += reasoning_content
+                collected_reasoning_content.append(reasoning_content)
 
-        self.clear_lines(1)
+            if is_reasoning and not reasoning_content:
+                new_content += "> summary\n"
+                is_reasoning = False
+
+            if content:
+                new_content += content
+                all_content += content
+                collected_content.append(content)
+
+            if new_content:
+                stream_buffer.add_content(new_content)
 
         return "".join(collected_content), "".join(collected_reasoning_content)
+
+    def _update_display_buffer(self, content_buffer: deque, new_content: str):
+        """Update the display buffer with new content.
+
+        Args:
+            content_buffer: The deque buffer for display content
+            new_content: New content to add to the buffer
+        """
+        first_part, *rest = new_content.split('\n')
+        if not content_buffer:
+            content_buffer.append(first_part)
+        else:
+            content_buffer[-1] += first_part
+        content_buffer.extend(rest)
+
+    async def stream_response(self, response_stream) -> Tuple[str, str]:
+        """Stream and display the response in real-time with rate-limited updates.
+
+        Args:
+            response_stream: The streaming response from OpenRouter API
+
+        Returns:
+            Tuple[str, str]: A tuple containing (complete response text, reasoning text)
+        """
+        stream_buffer = StreamBuffer(max_chars_per_second=30)
+        max_lines = self.console.height
+        content_buffer = deque(maxlen=max_lines)
+
+        # Start content collection task
+        collection_task = asyncio.create_task(
+            self._collect_stream_content(response_stream, stream_buffer)
+        )
+
+        # Display task with rate limiting
+        with Live(console=self.console, refresh_per_second=10) as live:
+            while True:
+                if collection_task.done():
+                    live.update("")
+                    break
+
+                chunk = stream_buffer.get_next_chunk()
+                if chunk:
+                    self._update_display_buffer(content_buffer, chunk)
+                    live.update("\n".join(content_buffer))
+                else:
+                    await asyncio.sleep(0.05)  # Small delay only when no content to display
+
+        # Clear empty line
+        self.clear_lines(1)
+
+        return await collection_task
 
     def display_help(self):
         """Display help information about available commands and features"""
