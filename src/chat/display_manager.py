@@ -4,6 +4,7 @@ import asyncio
 from typing import List, Tuple, Optional
 from .models import Message
 from .util import get_iso8601_timestamp
+from .config import config
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
@@ -21,7 +22,7 @@ custom_theme = Theme({
 })
 
 class StreamBuffer:
-    def __init__(self, max_chars_per_second: int = 30):
+    def __init__(self, max_chars_per_second: int):
         self.buffer = ""
         self.max_chars_per_second = max_chars_per_second
         self.last_update_time = time.time()
@@ -49,6 +50,7 @@ class StreamBuffer:
 class DisplayManager:
     def __init__(self):
         self.console = Console(theme=custom_theme)
+        self.max_chars_per_second = config.get("max_chars_per_second", 30)
 
     def display_message_panel(self, message: Message, index: Optional[int] = None):
         """Display a message in a panel with role-colored borders.
@@ -151,7 +153,7 @@ class DisplayManager:
         Returns:
             Tuple[str, str]: A tuple containing (complete response text, reasoning text)
         """
-        stream_buffer = StreamBuffer(max_chars_per_second=30)
+        stream_buffer = StreamBuffer(max_chars_per_second=self.max_chars_per_second)
         max_lines = self.console.height
         content_buffer = deque(maxlen=max_lines)
 

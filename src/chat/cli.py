@@ -9,18 +9,77 @@ from rich.console import Console
 from .app import ChatApp
 from .display_manager import custom_theme
 from .config import (
-    OPENROUTER_API_KEY, DATA_FILE, OPENROUTER_API_BASE, DEFAULT_MODEL,
+    API_KEY, DATA_FILE, BASE_URL, MODEL,
     TMP_DIR, config
 )
+from .preset_manager import PresetManager
 
 @click.group()
 def cli():
     """Command-line interface for chat application."""
-    # Skip API key check for init command
-    if click.get_current_context().invoked_subcommand != 'init' and not OPENROUTER_API_KEY:
+    # Skip API key check for init command and preset commands
+    current_cmd = click.get_current_context().invoked_subcommand
+    if current_cmd not in ['init', 'preset'] and not API_KEY:
         click.echo("Error: OpenRouter API key is not set")
-        click.echo("Please set it using 'y-cli init' or set OPENROUTER_API_KEY environment variable")
+        click.echo("Please set it using 'y-cli init' or set API_KEY environment variable")
         raise click.Abort()
+
+@cli.group()
+def preset():
+    """Manage OpenRouter configuration presets."""
+    pass
+
+@preset.command('add')
+def preset_add():
+    """Add a new configuration preset."""
+    name = click.prompt("Preset name")
+    api_key = click.prompt("API key")
+    base_url = click.prompt("Base URL", default=BASE_URL)
+    model = click.prompt("Model", default=MODEL)
+
+    preset_manager = PresetManager(config["preset_file"])
+    preset_manager.add_preset(name, api_key, base_url, model)
+    click.echo(f"Preset '{name}' added successfully")
+
+@preset.command('list')
+def preset_list():
+    """List all configuration presets."""
+    preset_manager = PresetManager(config["preset_file"])
+    presets = preset_manager.list_presets()
+    
+    if not presets:
+        click.echo("No presets found")
+        return
+
+    # Prepare table data
+    table_data = []
+    for preset in presets:
+        table_data.append([
+            preset.name,
+            preset.api_key[:8] + "..." if preset.api_key else "N/A",
+            preset.base_url,
+            preset.model
+        ])
+
+    # Print formatted table
+    headers = ["Name", "API Key", "Base URL", "Model"]
+    click.echo(tabulate(
+        table_data,
+        headers=headers,
+        tablefmt="simple",
+        numalign='left',
+        stralign='left'
+    ))
+
+@preset.command('delete')
+@click.argument('name')
+def preset_delete(name):
+    """Delete a configuration preset."""
+    preset_manager = PresetManager(config["preset_file"])
+    if preset_manager.delete_preset(name):
+        click.echo(f"Preset '{name}' deleted successfully")
+    else:
+        click.echo(f"Preset '{name}' not found")
 
 @cli.command()
 def init():
@@ -45,19 +104,19 @@ def init():
         config = get_default_config()
 
     # Check if API key is already set in environment
-    if OPENROUTER_API_KEY:
+    if API_KEY:
         click.echo("OpenRouter API key is already set in environment")
-        config["openrouter_api_key"] = OPENROUTER_API_KEY
+        config["api_key"] = API_KEY
     else:
         # Prompt for OpenRouter API key
         api_key = click.prompt(
             "Please enter your OpenRouter API key",
             type=str,
-            default=config.get("openrouter_api_key", ""),
+            default=config.get("api_key", ""),
             show_default=False
         )
         # Update config with new API key
-        config["openrouter_api_key"] = api_key
+        config["api_key"] = api_key
 
     # Write updated config
     with open(config_file, "w") as f:
@@ -66,31 +125,49 @@ def init():
     click.echo(f"\nConfiguration saved to: {config_file}")
     click.echo(f"Chat data will be stored in: {os.path.expanduser(config['data_file'])}")
     click.echo("\nOptional settings that can be edited in the config file:")
-    click.echo("- default_model: The default model to use for chat")
-    click.echo("- openrouter_base_url: OpenRouter API base URL")
+    click.echo("- model: The default model to use for chat")
+    click.echo("- base_url: OpenRouter API base URL")
     click.echo("- proxy_host/proxy_port: Network proxy settings")
     click.echo("- s3_bucket/cloudfront_distribution_id: For sharing chats")
 
 @cli.command()
 @click.option('--chat-id', '-c', help='Continue from an existing chat')
 @click.option('--latest', '-l', is_flag=True, help='Continue from the latest chat')
-@click.option('--model', '-m', help=f'OpenRouter model to use (default: {DEFAULT_MODEL})')
+@click.option('--model', '-m', help=f'OpenRouter model to use (default: {MODEL})')
 @click.option('--verbose', '-v', is_flag=True, help='Show detailed usage instructions')
-def chat(chat_id: Optional[str], latest: bool, model: Optional[str] = None, verbose: bool = False):
+@click.option('--preset', '-p', help='Use specific configuration preset')
+def chat(chat_id: Optional[str], latest: bool, model: Optional[str] = None, verbose: bool = False, preset: Optional[str] = None):
     """Start a new chat conversation or continue an existing one.
 
     Use --latest/-l to continue from your most recent chat.
     Use --chat-id/-c to continue from a specific chat ID.
     If neither option is provided, starts a new chat.
+    Use --preset/-p to use a specific configuration preset.
     """
     console = Console(theme=custom_theme)
 
-    # if not model
-    if not model:
-        model = DEFAULT_MODEL
+    # Handle preset if specified
+    current_api_key = API_KEY
+    current_base_url = BASE_URL
+    current_model = model or MODEL
+
+    if preset:
+        preset_manager = PresetManager(config["preset_file"])
+        preset_config = preset_manager.get_preset(preset)
+        if not preset_config:
+            click.echo(f"Error: Preset '{preset}' not found")
+            raise click.Abort()
+        current_api_key = preset_config.api_key
+        current_base_url = preset_config.base_url
+        current_model = preset_config.model
 
     # Create a single ChatApp instance for all operations
-    chat_app = ChatApp(verbose=verbose, model=model)
+    chat_app = ChatApp(
+        verbose=verbose,
+        model=current_model,
+        api_key=current_api_key,
+        base_url=current_base_url
+    )
 
     # Handle --latest flag
     if latest:
@@ -100,7 +177,13 @@ def chat(chat_id: Optional[str], latest: bool, model: Optional[str] = None, verb
             raise click.Abort()
         chat_id = chats[0].id
         # Reinitialize ChatApp with the found chat_id
-        chat_app = ChatApp(chat_id=chat_id, verbose=verbose, model=model)
+        chat_app = ChatApp(
+            chat_id=chat_id,
+            verbose=verbose,
+            model=current_model,
+            api_key=current_api_key,
+            base_url=current_base_url
+        )
 
     # Handle --chat-id flag
     elif chat_id:
@@ -109,34 +192,62 @@ def chat(chat_id: Optional[str], latest: bool, model: Optional[str] = None, verb
             click.echo(f"Error: Chat with ID {chat_id} not found")
             raise click.Abort()
         # Reinitialize ChatApp with the specified chat_id
-        chat_app = ChatApp(chat_id=chat_id, verbose=verbose, model=model)
+        chat_app = ChatApp(
+            chat_id=chat_id,
+            verbose=verbose,
+            model=current_model,
+            api_key=current_api_key,
+            base_url=current_base_url
+        )
 
     if verbose:
         console.print(f"Using file for chat data: {DATA_FILE}")
-        console.print(f"Using OpenRouter API Base URL: {OPENROUTER_API_BASE}")
-        console.print(f"Using model: {model or DEFAULT_MODEL}")
+        console.print(f"Using OpenRouter API Base URL: {current_base_url}")
+        console.print(f"Using model: {current_model}")
+        if preset:
+            console.print(f"Using preset: {preset}")
         if chat_id:
             console.print(f"Continuing from chat {chat_id}")
         else:
             console.print("Starting new chat")
 
+    # Override environment variables for this session
+    os.environ["OPENROUTER_API_KEY"] = current_api_key
+    os.environ["OPENROUTER_BASE_URL"] = current_base_url
+
     asyncio.run(chat_app.chat())
 
 @cli.command()
 @click.option('--keyword', '-k', help='Filter chats by message content')
+@click.option('--model', '-m', help='Filter chats by model name')
+@click.option('--provider', '-p', help='Filter chats by provider name')
 @click.option('--limit', '-l', default=10, help='Maximum number of chats to show (default: 10)')
-def list(keyword: Optional[str], limit: int):
+def list(keyword: Optional[str], model: Optional[str], provider: Optional[str], limit: int):
     """List chat conversations with optional filtering.
 
     Shows chats sorted by creation time (newest first).
     Use --keyword to filter by message content.
+    Use --model to filter by model name.
+    Use --provider to filter by provider name.
     Use --limit to control the number of results.
     """
     chat_app = ChatApp(model=None)
-    chats = chat_app.chat_manager.service.list_chats(keyword=keyword, limit=limit)
+    chats = chat_app.chat_manager.service.list_chats(
+        keyword=keyword,
+        model=model,
+        provider=provider,
+        limit=limit
+    )
     if not chats:
-        if keyword:
-            click.echo(f"No chats found matching keyword: {keyword}")
+        if any([keyword, model, provider]):
+            filters = []
+            if keyword:
+                filters.append(f"keyword '{keyword}'")
+            if model:
+                filters.append(f"model '{model}'")
+            if provider:
+                filters.append(f"provider '{provider}'")
+            click.echo(f"No chats found matching filters: {', '.join(filters)}")
         else:
             click.echo("No chats found")
         return

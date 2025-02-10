@@ -9,7 +9,7 @@ from .display_manager import DisplayManager
 from .input_manager import InputManager
 from .mcp_manager import MCPManager
 from .openrouter_manager import OpenRouterManager
-from .config import MCP_SETTINGS_FILE, DEFAULT_MODEL
+from .config import MCP_SETTINGS_FILE, MODEL
 from .system import get_system_prompt
 from .models import Message
 
@@ -23,7 +23,7 @@ class ChatManager:
         openrouter_manager: OpenRouterManager,
         chat_id: Optional[str] = None,
         verbose: bool = False,
-        model: str = DEFAULT_MODEL
+        model: str = MODEL
     ):
         """Initialize chat manager with required components.
 
