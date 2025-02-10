@@ -11,10 +11,12 @@ def truncate_text(text, max_length):
     return str(text)[:max_length-3] + "..."
 
 @click.command('list')
-def bot_list():
+@click.option('--verbose', '-v', is_flag=True, help='Show detailed information')
+def bot_list(verbose: bool = False):
     """List all bot configurations."""
     from config import config
-    click.echo(f"{click.style('Bot config data will be stored in:', fg='green')}\n{click.style(config['bot_config_file'], fg='cyan')}")
+    if verbose:
+        click.echo(f"{click.style('Bot config data will be stored in:', fg='green')}\n{click.style(config['bot_config_file'], fg='cyan')}")
 
     configs = bot_config_manager.list_configs()
     
@@ -22,8 +24,8 @@ def bot_list():
         click.echo("No bot configurations found")
         return
 
-    # Get terminal width
-    term_width = shutil.get_terminal_size().columns
+    if verbose:
+        click.echo(f"Found {len(configs)} bot configuration(s)")
     
     # Define column width ratios (total should be < 1 to leave space for separators)
     width_ratios = {
@@ -38,6 +40,7 @@ def bot_list():
     }
     
     # Calculate actual column widths
+    term_width = shutil.get_terminal_size().columns
     col_widths = {k: max(10, int(term_width * ratio)) for k, ratio in width_ratios.items()}
     
     # Prepare table data with truncated values
