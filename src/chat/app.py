@@ -12,30 +12,33 @@ from .openrouter_manager import OpenRouterManager
 from .chat_manager import ChatManager
 from .config import (
     DATA_FILE,
-    OPENROUTER_API_KEY,
-    OPENROUTER_API_BASE,
-    DEFAULT_MODEL
+    API_KEY,
+    BASE_URL,
+    MODEL
 )
 
 # Load environment variables
 load_dotenv()
 
 class ChatApp:
-    def __init__(self, chat_id: Optional[str] = None, verbose: bool = False, model: str = DEFAULT_MODEL):
+    def __init__(self, chat_id: Optional[str] = None, verbose: bool = False, model: str = MODEL, 
+                 api_key: Optional[str] = None, base_url: Optional[str] = None):
         """Initialize the chat application.
 
         Args:
             chat_id: Optional ID of existing chat to load
             verbose: Whether to show verbose output
-            model: Optional model to use for chat (defaults to DEFAULT_MODEL)
+            model: Optional model to use for chat (defaults to MODEL)
+            api_key: Optional API key override
+            base_url: Optional base URL override
         """
         # Initialize managers
         display_manager = DisplayManager()
         input_manager = InputManager(display_manager.console)
         mcp_manager = MCPManager(display_manager.console)
         openrouter_manager = OpenRouterManager(
-            api_key=OPENROUTER_API_KEY,
-            base_url=OPENROUTER_API_BASE,
+            api_key=api_key or API_KEY,
+            base_url=base_url or BASE_URL,
             model=model
         )
 

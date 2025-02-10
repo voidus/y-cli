@@ -4,11 +4,11 @@ from types import SimpleNamespace
 import httpx
 from .display_manager import DisplayManager
 from .util import get_iso8601_timestamp, get_unix_timestamp
-from .config import OPENROUTER_CONFIG_FILE, DEFAULT_MODEL
+from .config import OPENROUTER_CONFIG_FILE, MODEL
 from .models import Message
 
 class OpenRouterManager:
-    def __init__(self, api_key: str, base_url: Optional[str] = None, model: str = DEFAULT_MODEL):
+    def __init__(self, api_key: str, base_url: Optional[str] = None, model: str = MODEL):
         """Initialize OpenRouter settings.
 
         Args:

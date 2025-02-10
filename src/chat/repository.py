@@ -34,11 +34,14 @@ class ChatRepository:
                 json.dump(chat.to_dict(), f, ensure_ascii=False)
                 f.write('\n')
 
-    def list_chats(self, keyword: Optional[str] = None, limit: int = 10) -> List[Chat]:
+    def list_chats(self, keyword: Optional[str] = None, model: Optional[str] = None,
+                   provider: Optional[str] = None, limit: int = 10) -> List[Chat]:
         """List chats with optional filtering
 
         Args:
             keyword: Optional text to filter messages by content
+            model: Optional model name to filter by
+            provider: Optional provider name to filter by
             limit: Maximum number of chats to return (default: 10)
         """
         chats = self._read_chats()
@@ -46,26 +49,49 @@ class ChatRepository:
         # Sort by create_time in descending order
         chats.sort(key=lambda x: x.create_time, reverse=True)
 
-        if keyword:
-            keyword_lower = keyword.lower()
+        # Apply filters if any are specified
+        if any([keyword, model, provider]):
             filtered_chats = []
             for chat in chats:
+                # Check each message in the chat
                 for msg in chat.messages:
-                    if isinstance(msg.content, str):
-                        if keyword_lower in msg.content.lower():
-                            filtered_chats.append(chat)
-                            break
-                    else:  # content is a list of parts
-                        for part in msg.content:
-                            if isinstance(part, dict) and 'text' in part:
-                                if keyword_lower in part['text'].lower():
-                                    filtered_chats.append(chat)
-                                    break
-                        else:
+                    matches = True
+                    
+                    # Apply keyword filter if specified
+                    if keyword:
+                        keyword_lower = keyword.lower()
+                        content_matches = False
+                        if isinstance(msg.content, str):
+                            if keyword_lower in msg.content.lower():
+                                content_matches = True
+                        else:  # content is a list of parts
+                            for part in msg.content:
+                                if isinstance(part, dict) and 'text' in part:
+                                    if keyword_lower in part['text'].lower():
+                                        content_matches = True
+                                        break
+                        if not content_matches:
+                            matches = False
                             continue
+                    
+                    # Apply model filter if specified
+                    if model and (not msg.model or model.lower() not in msg.model.lower()):
+                        matches = False
+                        continue
+                    
+                    # Apply provider filter if specified
+                    if provider and (not msg.provider or provider.lower() not in msg.provider.lower()):
+                        matches = False
+                        continue
+                    
+                    # If all specified filters match, add the chat and break
+                    if matches:
+                        filtered_chats.append(chat)
                         break
+                
                 if len(filtered_chats) >= limit:
                     break
+            
             chats = filtered_chats
 
         return chats[:limit]

@@ -24,12 +24,14 @@ DEFAULT_OPENROUTER_CONFIG = {
 def get_default_config():
     """Get default configuration"""
     return {
+        "max_chars_per_second": 30,
         "data_file": "~/.local/share/y-cli/chat.jsonl",
+        "preset_file": "~/.local/share/y-cli/preset.jsonl",
         "openrouter_config_file": "~/.config/y-cli/openrouter_config.json",
         "mcp_settings_file": "~/.config/y-cli/mcp_settings.json",
-        "openrouter_api_key": os.getenv("OPENROUTER_API_KEY", ""),
-        "openrouter_base_url": "https://openrouter.ai/api/v1",
-        "default_model": "anthropic/claude-3.5-sonnet:beta",
+        "api_key": "enter-your-key",
+        "base_url": "https://openrouter.ai/api/v1",
+        "model": "anthropic/claude-3.5-sonnet:beta",
         "openrouter_import_dir": "~/.local/share/y-cli/openrouter_import",
         "openrouter_import_history": "~/.local/share/y-cli/openrouter_import_history.jsonl",
         "tmp_dir": "~/.local/share/y-cli/tmp",
@@ -89,9 +91,9 @@ def load_config():
 config, DATA_FILE = load_config()
 
 # Export OpenRouter configuration
-OPENROUTER_API_KEY = config["openrouter_api_key"]
-OPENROUTER_API_BASE = config["openrouter_base_url"]
-DEFAULT_MODEL = config["default_model"]
+API_KEY = config["api_key"]
+BASE_URL = config["base_url"]
+MODEL = config["model"]
 OPENROUTER_IMPORT_DIR = os.path.expanduser(config["openrouter_import_dir"])
 OPENROUTER_IMPORT_HISTORY = os.path.expanduser(config["openrouter_import_history"])
 MCP_SETTINGS_FILE = os.path.expanduser(config["mcp_settings_file"])
