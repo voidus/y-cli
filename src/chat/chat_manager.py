@@ -2,16 +2,15 @@ from typing import List, Dict, Optional
 from contextlib import AsyncExitStack
 from types import SimpleNamespace
 
-from .models import Chat
+from chat.models import Chat, Message
 from .repository import ChatRepository
 from .service import ChatService
-from .display_manager import DisplayManager
-from .input_manager import InputManager
-from .mcp_manager import MCPManager
+from cli.display_manager import DisplayManager
+from cli.input_manager import InputManager
+from mcp_setting.mcp_manager import MCPManager
+from mcp_setting.system import get_system_prompt
 from .openrouter_manager import OpenRouterManager
-from .config import MCP_SETTINGS_FILE, MODEL
-from .system import get_system_prompt
-from .models import Message
+from bot import BotConfig
 
 class ChatManager:
     def __init__(
@@ -21,9 +20,10 @@ class ChatManager:
         input_manager: InputManager,
         mcp_manager: MCPManager,
         openrouter_manager: OpenRouterManager,
+        model: str,
+        bot_config: BotConfig,
         chat_id: Optional[str] = None,
-        verbose: bool = False,
-        model: str = MODEL
+        verbose: bool = False
     ):
         """Initialize chat manager with required components.
 
@@ -33,12 +33,14 @@ class ChatManager:
             input_manager: Manager for user input
             mcp_manager: Manager for MCP operations
             openrouter_manager: Manager for OpenRouter interactions
+            model: Model to use for chat
+            bot_config: Bot configuration
             chat_id: Optional ID of existing chat to load
             verbose: Whether to show verbose output
-            model: Model to use for chat (default: claude-3.5-sonnet)
         """
         self.service = ChatService(repository)
         self.model = model
+        self.bot_config = bot_config
         self.display_manager = display_manager
         self.input_manager = input_manager
         self.mcp_manager = mcp_manager
@@ -83,7 +85,7 @@ class ChatManager:
 
     async def process_user_message(self, user_message: Message):
         self.messages.append(user_message)
-        self.display_manager.display_message_panel(user_message)
+        self.display_manager.display_message_panel(user_message, index=len(self.messages) - 1)
         self.persist_chat()
 
         assistant_message = await self.openrouter_manager.call_chat_completions(self.messages, self.system_prompt)
@@ -97,7 +99,7 @@ class ChatManager:
 
         if not self.openrouter_manager.contains_tool_use(content):
             self.messages.append(assistant_message)
-            self.display_manager.display_message_panel(assistant_message)
+            self.display_manager.display_message_panel(assistant_message, index=len(self.messages) - 1)
             return
 
         # Handle response with tool use
@@ -105,8 +107,8 @@ class ChatManager:
 
         # Update last assistant message with plain content
         assistant_message.content = plain_content
-        self.display_manager.display_message_panel(assistant_message)
         self.messages.append(assistant_message)
+        self.display_manager.display_message_panel(assistant_message, index=len(self.messages) - 1)
 
         # Get user confirmation for tool execution
         if not self.get_user_confirmation(tool_content):
@@ -142,9 +144,9 @@ class ChatManager:
         """Run the chat session"""
         async with AsyncExitStack() as exit_stack:
             try:
-                if "claude-3.5-sonnet" in self.model:
-                    # Initialize MCP and system prompt only for claude-3.5-sonnet
-                    await self.mcp_manager.connect_to_servers(MCP_SETTINGS_FILE, exit_stack)
+                if self.bot_config.mcp_server_settings:
+                    # Initialize MCP and system prompt if MCP server settings exist
+                    await self.mcp_manager.connect_to_servers(self.bot_config.mcp_server_settings, exit_stack)
                     self.system_prompt = await get_system_prompt(self.mcp_manager)
 
                 if self.verbose:

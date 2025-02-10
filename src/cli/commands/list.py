@@ -3,7 +3,7 @@ import click
 import shutil
 from tabulate import tabulate
 
-from ...app import ChatApp
+from chat.app import ChatApp
 
 def get_column_widths():
     # Column weights (higher number = wider column)
@@ -41,6 +41,8 @@ def list_chats(keyword: Optional[str], model: Optional[str], provider: Optional[
     Use --provider to filter by provider name.
     Use --limit to control the number of results.
     """
+    from config import config
+    click.echo(f"{click.style('Chat data will be stored in:', fg='green')}\n{click.style(config['chat_file'], fg='cyan')}")
     chat_app = ChatApp(model=None)
     chats = chat_app.chat_manager.service.list_chats(
         keyword=keyword,

@@ -2,13 +2,13 @@ from typing import List, Dict, Optional, AsyncGenerator, Union
 import json
 from types import SimpleNamespace
 import httpx
-from .display_manager import DisplayManager
-from .util import get_iso8601_timestamp, get_unix_timestamp
-from .config import OPENROUTER_CONFIG_FILE, MODEL
-from .models import Message
+from cli.display_manager import DisplayManager
+from util import get_iso8601_timestamp, get_unix_timestamp
+from config import config
+from chat.models import Message
 
 class OpenRouterManager:
-    def __init__(self, api_key: str, base_url: Optional[str] = None, model: str = MODEL):
+    def __init__(self, api_key: str, base_url: Optional[str] = None, model: str = None):
         """Initialize OpenRouter settings.
 
         Args:
@@ -132,8 +132,8 @@ class OpenRouterManager:
         """
         # Prepare messages with cache_control and system message
         prepared_messages = self.prepare_messages_for_completion(messages, system_prompt)
-        openrouter_config = self.load_openrouter_config(OPENROUTER_CONFIG_FILE)
-        provider_config = openrouter_config.get('provider', {})
+        # TODO: get provider config from bot config
+        provider_config = None
         body = {
             "model": self.model,
             "messages": prepared_messages,
@@ -144,7 +144,9 @@ class OpenRouterManager:
         if "deepseek-r1" in self.model:
             body["include_reasoning"] = True
         try:
-            async with httpx.AsyncClient(base_url=self.base_url) as client:
+            async with httpx.AsyncClient(
+                base_url=self.base_url
+            ) as client:
                 async with client.stream(
                     "POST",
                     "/chat/completions",

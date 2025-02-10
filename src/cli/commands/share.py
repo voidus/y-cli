@@ -2,8 +2,8 @@ import os
 from typing import Optional
 import click
 
-from ...app import ChatApp
-from ...config import config
+from chat.app import ChatApp
+from config import config
 
 @click.command()
 @click.option('--chat-id', '-c', help='ID of the chat to share')

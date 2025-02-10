@@ -3,12 +3,12 @@ from datetime import datetime
 import sys
 import os
 from typing import List, Optional, Dict
-from .models import Chat, Message
+from chat.models import Chat, Message
 from .repository import ChatRepository
 import time
 
-from .util import get_iso8601_timestamp, get_unix_timestamp
-from .config import TMP_DIR
+from util import get_iso8601_timestamp, get_unix_timestamp
+from config import config
 
 IS_WINDOWS = sys.platform == 'win32'
 
@@ -109,8 +109,8 @@ class ChatService:
             md_content += f"*{msg.timestamp}*\n\n---\n\n"
 
         # Write markdown to temporary file
-        md_file = os.path.join(TMP_DIR, f"{chat_id}.md")
-        html_file = os.path.join(TMP_DIR, f"{chat_id}.html")
+        md_file = os.path.join(config["tmp_dir"], f"{chat_id}.md")
+        html_file = os.path.join(config["tmp_dir"], f"{chat_id}.html")
 
         with open(md_file, "w", encoding="utf-8") as f:
             f.write(md_content)
@@ -156,7 +156,7 @@ details[open] summary {
 '''
 
         # Create temporary CSS file
-        css_file = os.path.join(TMP_DIR, f"{chat_id}.css")
+        css_file = os.path.join(config["tmp_dir"], f"{chat_id}.css")
         with open(css_file, "w", encoding="utf-8") as f:
             f.write(css)
 

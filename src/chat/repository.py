@@ -2,11 +2,12 @@ import json
 import os
 from typing import List, Optional, Dict
 from datetime import datetime
-from .models import Chat, Message
+from chat.models import Chat, Message
+from config import config
 
 class ChatRepository:
-    def __init__(self, data_file: str):
-        self.data_file = os.path.expanduser(data_file)
+    def __init__(self):
+        self.data_file = os.path.expanduser(config['chat_file'])
         self._ensure_file_exists()
 
     def _ensure_file_exists(self) -> None:

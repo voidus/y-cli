@@ -1,7 +1,7 @@
 import json
 import asyncio
 import os
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, Union
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from rich.console import Console
@@ -12,14 +12,21 @@ class MCPManager:
         self.sessions: Dict[str, ClientSession] = {}
         self.console = console
 
-    def load_mcp_settings(self, settings_file: str) -> dict:
-        """Load MCP server settings from json file"""
-        try:
-            with open(settings_file, 'r', encoding="utf-8") as f:
-                settings = json.load(f)
-            return settings.get('mcpServers', {})
-        except (FileNotFoundError, json.JSONDecodeError) as e:
+    def parse_mcp_server_settings(self, settings: Optional[Union[str, dict]] = None) -> dict:
+        """Parse MCP settings from string or dict"""
+        if not settings:
             return {}
+
+        if isinstance(settings, str):
+            try:
+                settings_dict = json.loads(settings)
+            except json.JSONDecodeError as e:
+                self.console.print(f"[red]Error parsing MCP settings JSON: {str(e)}[/red]")
+                return {}
+        else:
+            settings_dict = settings
+
+        return settings_dict
 
     async def connect_to_server(self, server_name: str, server_config: dict, exit_stack: AsyncExitStack):
         """Connect to an MCP server using configuration"""
@@ -51,9 +58,9 @@ class MCPManager:
                 import traceback
                 self.console.print(f"[red]Detailed error:\n{''.join(traceback.format_tb(e.__traceback__))}[/red]")
 
-    async def connect_to_servers(self, settings_file: str, exit_stack: AsyncExitStack):
+    async def connect_to_servers(self, settings: Optional[Union[str, dict]], exit_stack: AsyncExitStack):
         """Connect to all enabled MCP servers from settings"""
-        servers = self.load_mcp_settings(settings_file)
+        servers = self.parse_mcp_server_settings(settings)
 
         for server_name, config in servers.items():
             if config.get('disabled', False) or server_name == 'git':
