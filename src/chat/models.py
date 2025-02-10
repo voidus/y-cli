@@ -1,17 +1,17 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from typing import List, Dict, Optional, Union, Iterable
 from datetime import datetime
-import time
+from util import get_iso8601_timestamp
 
-from openai.types.chat.chat_completion_content_part_param import ChatCompletionContentPartParam
-from openai.types.chat.chat_completion_user_message_param import ChatCompletionUserMessageParam
-
-from .util import get_iso8601_timestamp, get_unix_timestamp
+@dataclass
+class ContentPart:
+    text: str
+    type: str = "text"
 
 @dataclass
 class Message:
     role: str
-    content: Union[str, Iterable[ChatCompletionContentPartParam]]
+    content: Union[str, Iterable[ContentPart]]
     timestamp: str
     unix_timestamp: int
     reasoning_content: Optional[str] = None
@@ -33,10 +33,8 @@ class Message:
         # Handle content which can be str or list of content parts
         content = data['content']
         if isinstance(content, list):
-            # Validate each content part has required fields
-            for part in content:
-                if not isinstance(part, dict) or 'type' not in part or 'text' not in part:
-                    raise ValueError("Invalid content part structure")
+            # Convert dict content parts to ContentPart objects
+            content = [ContentPart(**part) if isinstance(part, dict) else part for part in content]
 
         return cls(
             role=data['role'],
@@ -54,12 +52,7 @@ class Message:
     def to_dict(self) -> Dict:
         # Filter out cache_control from content if it's a list of parts
         if isinstance(self.content, list):
-            content = []
-            for part in self.content:
-                part_copy = dict(part)
-                if 'cache_control' in part_copy:
-                    del part_copy['cache_control']
-                content.append(part_copy)
+            content = [{'type': part.type, 'text': part.text} for part in self.content]
         else:
             content = self.content
 

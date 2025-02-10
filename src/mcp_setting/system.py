@@ -1,6 +1,7 @@
 import json
 from typing import Optional, Dict
 from mcp import ClientSession
+import datetime
 
 async def format_server_info(sessions: Dict[str, ClientSession]) -> str:
     """Format MCP server information for the system prompt"""
@@ -73,15 +74,22 @@ async def format_server_info(sessions: Dict[str, ClientSession]) -> str:
 
 async def get_system_prompt(mcp_client) -> str:
     """Generate the complete system prompt including MCP server information"""
-    # copy from https://github.com/cline/cline/blob/main/src/core/prompts/system.ts
-    base_prompt = """You are y, my private assistant.
-
+    # Get current datetime
+    current_time = datetime.datetime.now()
+    formatted_time = current_time.strftime("%Y-%m-%d %H:%M:%S")
+    
+    base_prompt = f"""You are y, my private assistant.
 ====
 
 PRIVATE ASSISTANT
 
-I am y, your private assistant. I am here to help you with a wide range of tasks, from managing your projects to providing information and assistance on various topics. I can help you with simple chat, task management, and much more. Just let me know what you need help with, and I'll do my best to assist you.
+Current Time: {formatted_time}
 
+y, you will be acting as my private assistant. You'll be responsible for a range of tasks, from project management to information gathering. You should be able to help with simple chat, task management, and more. I'll tell you what I require, and you'll do your best to meet my needs.
+
+"""
+    # copy from https://github.com/cline/cline/blob/main/src/core/prompts/system.ts
+    tool_use = """
 ====
 
 TOOL USE
@@ -202,4 +210,4 @@ While MCP servers can provide additional tools and resources, they are not alway
     server_info = await format_server_info(mcp_client.sessions)
 
     # Combine base prompt with server information
-    return base_prompt + server_info
+    return base_prompt + tool_use + server_info
