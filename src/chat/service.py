@@ -24,17 +24,20 @@ class ChatService:
         """Create an ISO format timestamp"""
         return get_iso8601_timestamp()
 
-    def list_chats(self, keyword: Optional[str] = None, limit: int = 10) -> List[Chat]:
+    def list_chats(self, keyword: Optional[str] = None, model: Optional[str] = None,
+                   provider: Optional[str] = None, limit: int = 10) -> List[Chat]:
         """List chats with optional filtering
 
         Args:
             keyword: Optional text to filter messages by content
+            model: Optional model name to filter by
+            provider: Optional provider name to filter by
             limit: Maximum number of chats to return (default: 10)
 
         Returns:
             List of chats filtered by the given criteria, sorted by creation time descending
         """
-        return self.repository.list_chats(keyword=keyword, limit=limit)
+        return self.repository.list_chats(keyword=keyword, model=model, provider=provider, limit=limit)
 
     def get_chat(self, chat_id: str) -> Optional[Chat]:
         """Get a specific chat by ID"""
