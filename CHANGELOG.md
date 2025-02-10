@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2025-02-11
+
+### Added
+- Bot configuration system
+- MCP server settings integration with bot configs
+- New CLI commands for managing bot configurations (`bot add`, `bot list`, `bot delete`)
+- Improved chat list filtering by model and provider
+- Dynamic terminal width handling for better display
+
+### Changed
+- Major project restructuring with dedicated packages for bot, chat, and CLI components
+- Moved CLI components to dedicated cli package
+- Updated configuration system to use bot configs
+- Improved error handling and user feedback
+- Enhanced system prompt with current time
+
 ## [0.2.5] - 2025-02-08
 
 ### Added
