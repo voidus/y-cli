@@ -32,7 +32,8 @@ def get_column_widths():
 @click.option('--model', '-m', help='Filter chats by model name')
 @click.option('--provider', '-p', help='Filter chats by provider name')
 @click.option('--limit', '-l', default=10, help='Maximum number of chats to show (default: 10)')
-def list_chats(keyword: Optional[str], model: Optional[str], provider: Optional[str], limit: int):
+@click.option('--verbose', '-v', is_flag=True, help='Show detailed information')
+def list_chats(keyword: Optional[str], model: Optional[str], provider: Optional[str], limit: int, verbose: bool = False):
     """List chat conversations with optional filtering.
 
     Shows chats sorted by creation time (newest first).
@@ -42,7 +43,18 @@ def list_chats(keyword: Optional[str], model: Optional[str], provider: Optional[
     Use --limit to control the number of results.
     """
     from config import config
-    click.echo(f"{click.style('Chat data will be stored in:', fg='green')}\n{click.style(config['chat_file'], fg='cyan')}")
+    if verbose:
+        click.echo(f"{click.style('Chat data will be stored in:', fg='green')}\n{click.style(config['chat_file'], fg='cyan')}")
+        if any([keyword, model, provider]):
+            filters = []
+            if keyword:
+                filters.append(f"keyword: '{keyword}'")
+            if model:
+                filters.append(f"model: '{model}'")
+            if provider:
+                filters.append(f"provider: '{provider}'")
+            click.echo(f"Applied filters: {', '.join(filters)}")
+        click.echo(f"Result limit: {limit}")
     chat_app = ChatApp(model=None)
     chats = chat_app.chat_manager.service.list_chats(
         keyword=keyword,
@@ -63,6 +75,9 @@ def list_chats(keyword: Optional[str], model: Optional[str], provider: Optional[
         else:
             click.echo("No chats found")
         return
+
+    if verbose:
+        click.echo(f"Found {len(chats)} chat(s)")
 
     # Get dynamic column widths
     widths = get_column_widths()

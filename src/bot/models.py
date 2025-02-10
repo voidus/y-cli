@@ -24,8 +24,8 @@ class BotConfig:
     model: str = "anthropic/claude-3.5-sonnet:beta"
     print_speed: int = 60
     description: Optional[str] = None
-    openrouter_config: Optional[Dict] = field(default_factory=lambda: DEFAULT_OPENROUTER_SETTINGS.copy())
-    mcp_server_settings: Optional[Dict] = field(default_factory=lambda: DEFAULT_MCP_SERVER_SETTINGS.copy())
+    openrouter_config: Optional[Dict] = None
+    mcp_server_settings: Optional[Dict] = None
 
     @classmethod
     def from_dict(cls, data: Dict) -> 'BotConfig':

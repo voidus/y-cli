@@ -5,6 +5,7 @@ A tiny command-line interface chat application that brings AI conversations to y
 ## ✨ Features
 
 - 💬 Interactive chat interface
+- 🤖 Support for multiple bot configurations (any base_url/api_key/model combination compatible with [OpenAI chat completion streaming format](https://platform.openai.com/docs/api-reference/chat/streaming))
 - 📝 All chat data stored in single JSONL files for easy access and sync
 - 🔗 MCP (Model Context Protocol) client support
 - 🤔 Deepseek-r1 reasoning content support for enhanced AI responses
@@ -69,6 +70,10 @@ y-cli [OPTIONS] COMMAND [ARGS]...
 - `chat`   Start a new chat conversation or continue an existing one
 - `list`   List chat conversations with optional filtering
 - `share`  Share a chat conversation by generating a shareable link
+- `bot`    Manage bot configurations:
+  - `add`     Add a new bot configuration
+  - `list`    List all configured bots
+  - `delete`  Delete a bot configuration
 
 ### Options
 - `--help`  Show help message and exit
