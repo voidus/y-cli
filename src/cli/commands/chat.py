@@ -4,43 +4,33 @@ import click
 from typing import Optional
 from rich.console import Console
 
-from ...app import ChatApp
-from ...display_manager import custom_theme
-from ...config import (
-    API_KEY, MODEL, BASE_URL, config
-)
-from ...preset_manager import PresetManager
+from chat.app import ChatApp
+from cli.display_manager import custom_theme
+from config import config, bot_config_manager
 
 @click.command()
 @click.option('--chat-id', '-c', help='Continue from an existing chat')
 @click.option('--latest', '-l', is_flag=True, help='Continue from the latest chat')
-@click.option('--model', '-m', help=f'OpenRouter model to use (default: {MODEL})')
+@click.option('--model', '-m', help='OpenRouter model to use')
 @click.option('--verbose', '-v', is_flag=True, help='Show detailed usage instructions')
-@click.option('--preset', '-p', help='Use specific configuration preset')
-def chat(chat_id: Optional[str], latest: bool, model: Optional[str] = None, verbose: bool = False, preset: Optional[str] = None):
+@click.option('--bot', '-b', help='Use specific bot configuration')
+def chat(chat_id: Optional[str], latest: bool, model: Optional[str], verbose: bool = False, bot: Optional[str] = None):
     """Start a new chat conversation or continue an existing one.
 
     Use --latest/-l to continue from your most recent chat.
     Use --chat-id/-c to continue from a specific chat ID.
     If neither option is provided, starts a new chat.
-    Use --preset/-p to use a specific configuration preset.
+    Use --bot/-b to use a specific bot configuration.
     """
     console = Console(theme=custom_theme)
 
-    # Handle preset if specified
-    current_api_key = API_KEY
-    current_base_url = BASE_URL
-    current_model = model or MODEL
-
-    if preset:
-        preset_manager = PresetManager(config["preset_file"])
-        preset_config = preset_manager.get_preset(preset)
-        if not preset_config:
-            click.echo(f"Error: Preset '{preset}' not found")
-            raise click.Abort()
-        current_api_key = preset_config.api_key
-        current_base_url = preset_config.base_url
-        current_model = preset_config.model
+    # Get bot config
+    bot_config = bot_config_manager.get_config(bot or "default")
+    
+    # Use command line model if specified, otherwise use bot config model
+    current_model = model or bot_config.model
+    current_api_key = bot_config.api_key
+    current_base_url = bot_config.base_url
 
     # Create a single ChatApp instance for all operations
     chat_app = ChatApp(
@@ -84,15 +74,11 @@ def chat(chat_id: Optional[str], latest: bool, model: Optional[str] = None, verb
     if verbose:
         console.print(f"Using OpenRouter API Base URL: {current_base_url}")
         console.print(f"Using model: {current_model}")
-        if preset:
-            console.print(f"Using preset: {preset}")
+        if bot:
+            console.print(f"Using bot: {bot}")
         if chat_id:
             console.print(f"Continuing from chat {chat_id}")
         else:
             console.print("Starting new chat")
-
-    # Override environment variables for this session
-    os.environ["OPENROUTER_API_KEY"] = current_api_key
-    os.environ["OPENROUTER_BASE_URL"] = current_base_url
 
     asyncio.run(chat_app.chat())

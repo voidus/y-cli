@@ -15,11 +15,10 @@ dependencies = [
     "rich>=13.9.4",
     "pyperclip>=1.9.0",
     "mcp>=1.2.1",
-    "openai>=1.61.1",
 ]
 
 [project.scripts]
-y-cli = "chat.cli:cli"
+y-cli = "cli:cli"
 
 [[tool.uv.index]]
 # Optional name for the index.

@@ -2,26 +2,17 @@ import os
 import sys
 import asyncio
 from typing import Optional
-from dotenv import load_dotenv
 
 from .repository import ChatRepository
-from .display_manager import DisplayManager
-from .input_manager import InputManager
-from .mcp_manager import MCPManager
+from cli.display_manager import DisplayManager
+from cli.input_manager import InputManager
+from mcp_setting.mcp_manager import MCPManager
 from .openrouter_manager import OpenRouterManager
 from .chat_manager import ChatManager
-from .config import (
-    DATA_FILE,
-    API_KEY,
-    BASE_URL,
-    MODEL
-)
-
-# Load environment variables
-load_dotenv()
+from config import bot_config_manager
 
 class ChatApp:
-    def __init__(self, chat_id: Optional[str] = None, verbose: bool = False, model: str = MODEL, 
+    def __init__(self, chat_id: Optional[str] = None, verbose: bool = False, model: Optional[str] = None, 
                  api_key: Optional[str] = None, base_url: Optional[str] = None):
         """Initialize the chat application.
 
@@ -37,19 +28,21 @@ class ChatApp:
         input_manager = InputManager(display_manager.console)
         mcp_manager = MCPManager(display_manager.console)
         openrouter_manager = OpenRouterManager(
-            api_key=api_key or API_KEY,
-            base_url=base_url or BASE_URL,
+            api_key=api_key,
+            base_url=base_url,
             model=model
         )
 
         # Initialize repository and create chat manager
-        repository = ChatRepository(DATA_FILE)
+        repository = ChatRepository()
+        bot_config = bot_config_manager.get_config()
         self.chat_manager = ChatManager(
             repository=repository,
             display_manager=display_manager,
             input_manager=input_manager,
             mcp_manager=mcp_manager,
             openrouter_manager=openrouter_manager,
+            bot_config=bot_config,
             model=model,
             chat_id=chat_id,
             verbose=verbose

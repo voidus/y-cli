@@ -3,8 +3,8 @@ import hashlib
 import os
 from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Optional
-from .models import Chat, Message
-from .repository import ChatRepository
+from .cli.models import Chat, Message
+from repository import ChatRepository
 from .config import DATA_FILE, OPENROUTER_IMPORT_DIR, OPENROUTER_IMPORT_HISTORY
 
 def format_timestamp(ts: str) -> str:
