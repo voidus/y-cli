@@ -4,19 +4,17 @@ from types import SimpleNamespace
 import httpx
 from cli.display_manager import DisplayManager
 from util import get_iso8601_timestamp, get_unix_timestamp
-from config import config
 from chat.models import Message
+from bot.models import BotConfig
 
 class OpenRouterManager:
-    def __init__(self, bot_config):
+    def __init__(self, bot_config: BotConfig):
         """Initialize OpenRouter settings.
 
         Args:
             bot_config: Bot configuration containing API settings
         """
-        self.api_key = bot_config.api_key
-        self.base_url = bot_config.base_url
-        self.model = bot_config.model
+        self.bot_config = bot_config
         self.display_manager = None
 
     def set_display_manager(self, display_manager: DisplayManager):
@@ -75,7 +73,7 @@ class OpenRouterManager:
             if isinstance(system_message_dict["content"], str):
                 system_message_dict["content"] = [{"type": "text", "text": system_message_dict["content"]}]
             # add cache_control only to claude-3 series model
-            if "claude-3" in self.model:
+            if "claude-3" in self.bot_config.model:
                 for part in system_message_dict["content"]:
                     if part.get("type") == "text":
                         part["cache_control"] = {"type": "ephemeral"}
@@ -89,7 +87,7 @@ class OpenRouterManager:
             prepared_messages.append(msg_dict)
 
         # Find last user message
-        if "claude-3" in self.model:
+        if "claude-3" in self.bot_config.model:
             for msg in reversed(prepared_messages):
                 if msg["role"] == "user":
                     if isinstance(msg["content"], str):
@@ -122,27 +120,28 @@ class OpenRouterManager:
         # Prepare messages with cache_control and system message
         prepared_messages = self.prepare_messages_for_completion(messages, system_prompt)
         # TODO: get provider config from bot config
-        provider_config = None
         body = {
-            "model": self.model,
+            "model": self.bot_config.model,
             "messages": prepared_messages,
             "stream": True
         }
-        if provider_config:
-            body["provider"] = provider_config
-        if "deepseek-r1" in self.model:
+        if "deepseek-r1" in self.bot_config.model:
             body["include_reasoning"] = True
+        if self.bot_config.openrouter_config and "provider" in self.bot_config.openrouter_config:
+            body["provider"] = self.bot_config.openrouter_config["provider"]
+        if self.bot_config.max_tokens:
+            body["max_tokens"] = self.bot_config.max_tokens
         try:
             async with httpx.AsyncClient(
-                base_url=self.base_url
+                base_url=self.bot_config.base_url,
             ) as client:
                 async with client.stream(
                     "POST",
-                    "/chat/completions",
+                    self.bot_config.custom_api_path if self.bot_config.custom_api_path else "/chat/completions",
                     headers={
-                        "HTTP-Referer": "https://luohy15.com",
+                        # "HTTP-Referer": "https://luohy15.com",
                         'X-Title': 'y-cli',
-                        "Authorization": f"Bearer {self.api_key}",
+                        "Authorization": f"Bearer {self.bot_config.api_key}",
                         "Content-Type": "application/json",
                     },
                     json=body,
@@ -172,7 +171,7 @@ class OpenRouterManager:
                                     if data.get("choices"):
                                         delta = data["choices"][0].get("delta", {})
                                         content = delta.get("content")
-                                        reasoning_content = delta.get("reasoning")
+                                        reasoning_content = delta.get("reasoning_content") if delta.get("reasoning_content") else delta.get("reasoning")
                                         if content is not None or reasoning_content is not None:
                                             chunk_data = SimpleNamespace(
                                                 choices=[SimpleNamespace(

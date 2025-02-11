@@ -16,6 +16,8 @@ def print_config_info():
     click.echo(f"- {click.style('description:', fg='yellow')} Bot configuration description")
     click.echo(f"- {click.style('openrouter_config:', fg='yellow')} OpenRouter configuration settings")
     click.echo(f"- {click.style('mcp_server_settings:', fg='yellow')} Model Context Protocol settings")
+    click.echo(f"- {click.style('max_tokens:', fg='yellow')} Maximum number of tokens in response")
+    click.echo(f"- {click.style('custom_api_path:', fg='yellow')} Custom path for chat completion API request")
     
     click.echo(f"\n{click.style('Proxy settings can be configured in ~/.config/y-cli/config.toml:', fg='magenta')}")
     click.echo(f"- {click.style('proxy_host/proxy_port:', fg='yellow')} Network proxy settings")
