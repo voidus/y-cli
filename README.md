@@ -7,7 +7,7 @@ A tiny command-line interface chat application that brings AI conversations to y
 - 📝 All chat data stored in single JSONL files for easy access and sync
 - 💬 Interactive chat interface
 - 🤖 Support for multiple bot configurations (any base_url/api_key/model combination compatible with [OpenAI chat completion streaming format](https://platform.openai.com/docs/api-reference/chat/streaming))
-- 🔗 MCP (Model Context Protocol) client support
+- 🔗 MCP (Model Context Protocol) client support with multiple server configurations
 - 🤔 Deepseek-r1 reasoning content support for enhanced AI responses
 
 ## Demo
@@ -15,8 +15,25 @@ A tiny command-line interface chat application that brings AI conversations to y
 ### Interactive chat
 ![interactive-chat](.github/visuals/interactive-chat.png)
 
-### Multiple bot
-![multiple-bot](.github/visuals/multiple-bot.png)
+### Multiple bot configurations
+```
+Name     API Key      Base URL                     Model                        Print Speed    Description    OpenRouter Config    MCP Servers
+-------  -----------  ---------------------------  ---------------------------  -------------  -------------  -------------------  -------------
+default  sk-or-v1...  https://gateway.ai.cloud...  anthropic/claude-3.5-son...  60             N/A            Yes                  todo tavily
+gemini   sk-or-v1...  https://gateway.ai.cloud...  google/gemini-2.0-flash-001  60             N/A            Yes                  No
+ds-chat  sk-or-v1...  https://gateway.ai.cloud...  deepseek/deepseek-chat       60             N/A            Yes                  No
+ds-r1    sk-or-v1...  https://gateway.ai.cloud...  deepseek/deepseek-r1         60             N/A            Yes                  No
+qc-r1    QC-3cce2...  https://maas.qc-ai.cn/ap...  DeepSeek-R1                  60             N/A            No                   No
+```
+
+### Multiple MCP servers
+```
+Name    Command    Arguments                                     Environment
+------  ---------  --------------------------------------------  ------------------------------------------------------
+todo    uvx        mcp-todo
+tavily  npx        -y tavily-mcp                                 TAVILY_API_KEY=tvly-api-key...
+pplx    node       /path/to/researcher-mcp/build/index.js  PERPLEXITY_API_KEY=pplx-api-key...
+```
 
 ### MCP client
 ![mcp](.github/visuals/mcp.gif)
