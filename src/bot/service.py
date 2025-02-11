@@ -1,7 +1,7 @@
 """Bot configuration service."""
 
 from typing import List, Optional
-from .models import BotConfig, DEFAULT_OPENROUTER_SETTINGS, DEFAULT_MCP_SERVER_SETTINGS
+from .models import BotConfig, DEFAULT_OPENROUTER_CONFIG, DEFAULT_MCP_SERVER_CONFIG
 from .repository import BotRepository
 
 class BotService:
@@ -23,17 +23,28 @@ class BotService:
         """List all bot configs."""
         return self.repository.list_configs()
 
-    def get_config(self, name: str) -> Optional[BotConfig]:
-        """Get a specific bot config by name."""
-        return self.repository.get_config(name)
+    def get_config(self, name: str = "default") -> BotConfig:
+        """Get a bot config by name.
+        
+        Args:
+            name: Name of the config to retrieve, defaults to "default"
+            
+        Returns:
+            BotConfig: The requested config or default config if not found
+        """
+        config = self.repository.get_config(name)
+        if not config:
+            self._ensure_default_config()
+            config = self.repository.get_config("default")
+        return config
 
     def add_config(self, config: BotConfig) -> BotConfig:
         """Add a new bot config or update existing one."""
         if config.name == "default":
             if config.openrouter_config is None:
-                config.openrouter_config = DEFAULT_OPENROUTER_SETTINGS.copy()
-            if config.mcp_server_settings is None:
-                config.mcp_server_settings = DEFAULT_MCP_SERVER_SETTINGS.copy()
+                config.openrouter_config = DEFAULT_OPENROUTER_CONFIG.copy()
+            if config.mcp_servers is None:
+                config.mcp_servers = DEFAULT_MCP_SERVER_CONFIG.copy()
         return self.repository.add_config(config)
 
     def delete_config(self, name: str) -> bool:

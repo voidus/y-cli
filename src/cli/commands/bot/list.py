@@ -1,8 +1,7 @@
 import click
 import shutil
 from tabulate import tabulate
-
-from config import bot_config_manager
+from config import config, bot_service
 
 def truncate_text(text, max_length):
     """Truncate text to max_length with ellipsis if needed."""
@@ -14,11 +13,10 @@ def truncate_text(text, max_length):
 @click.option('--verbose', '-v', is_flag=True, help='Show detailed information')
 def bot_list(verbose: bool = False):
     """List all bot configurations."""
-    from config import config
     if verbose:
         click.echo(f"{click.style('Bot config data will be stored in:', fg='green')}\n{click.style(config['bot_config_file'], fg='cyan')}")
 
-    configs = bot_config_manager.list_configs()
+    configs = bot_service.list_configs()
     
     if not configs:
         click.echo("No bot configurations found")
@@ -36,7 +34,7 @@ def bot_list(verbose: bool = False):
         "Print Speed": 0.08,
         "Description": 0.17,
         "OpenRouter Config": 0.1,
-        "MCP Settings": 0.1
+        "MCP Servers": 0.1
     }
     
     # Calculate actual column widths
@@ -45,7 +43,7 @@ def bot_list(verbose: bool = False):
     
     # Prepare table data with truncated values
     table_data = []
-    headers = ["Name", "API Key", "Base URL", "Model", "Print Speed", "Description", "OpenRouter Config", "MCP Settings"]
+    headers = ["Name", "API Key", "Base URL", "Model", "Print Speed", "Description", "OpenRouter Config", "MCP Servers"]
     
     for config in configs:
         table_data.append([
@@ -56,7 +54,7 @@ def bot_list(verbose: bool = False):
             truncate_text(str(config.print_speed), col_widths["Print Speed"]),
             truncate_text(config.description or "N/A", col_widths["Description"]),
             "Yes" if config.openrouter_config else "No",
-            "Yes" if config.mcp_server_settings else "No"
+            truncate_text(", ".join(config.mcp_servers) if config.mcp_servers else "No", col_widths["MCP Servers"])
         ])
     click.echo(tabulate(
         table_data,

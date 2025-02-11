@@ -4,6 +4,7 @@ import shutil
 from tabulate import tabulate
 
 from chat.app import ChatApp
+from config import bot_service
 
 def get_column_widths():
     # Column weights (higher number = wider column)
@@ -55,7 +56,7 @@ def list_chats(keyword: Optional[str], model: Optional[str], provider: Optional[
                 filters.append(f"provider: '{provider}'")
             click.echo(f"Applied filters: {', '.join(filters)}")
         click.echo(f"Result limit: {limit}")
-    chat_app = ChatApp()
+    chat_app = ChatApp(bot_config=bot_service.get_config())
     chats = chat_app.chat_manager.service.list_chats(
         keyword=keyword,
         model=model,

@@ -1,7 +1,8 @@
 import os
 import sys
 import toml
-from bot import BotConfigManager
+from bot import BotService, BotRepository
+from mcp_server import McpServerConfigService, McpServerConfigRepository
 
 def get_default_config():
     """Get default configuration"""
@@ -16,6 +17,7 @@ def get_default_config():
     return {
         "chat_file": f"{base_dir}/chat.jsonl",
         "bot_config_file": f"{base_dir}/bot_config.jsonl",
+        "mcp_config_file": f"{base_dir}/mcp_config.jsonl",
         "openrouter_import_dir": f"{base_dir}/openrouter_import",
         "openrouter_import_history": f"{base_dir}/openrouter_import_history.jsonl",
         "tmp_dir": f"{cache_dir}/tmp",
@@ -53,7 +55,7 @@ def load_config():
                     config[key] = value
 
     # Set up data files
-    for file_key in ["chat_file", "bot_config_file", "tmp_dir"]:
+    for file_key in ["chat_file", "bot_config_file", "mcp_config_file", "tmp_dir"]:
         config[file_key] = os.path.expanduser(config[file_key])
         os.makedirs(os.path.dirname(config[file_key]), exist_ok=True)
 
@@ -68,5 +70,6 @@ def load_config():
 
 CONFIG_FILE, config = load_config()
 
-# Create singleton bot config manager
-bot_config_manager = BotConfigManager(config["bot_config_file"])
+# Initialize global services
+bot_service = BotService(BotRepository(config['bot_config_file']))
+mcp_service = McpServerConfigService(McpServerConfigRepository(config['mcp_config_file']))
