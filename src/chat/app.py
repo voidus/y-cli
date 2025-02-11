@@ -6,11 +6,11 @@ from typing import Optional
 from .repository import ChatRepository
 from cli.display_manager import DisplayManager
 from cli.input_manager import InputManager
-from mcp_setting.mcp_manager import MCPManager
+from mcp_server.mcp_manager import MCPManager
 from .openrouter_manager import OpenRouterManager
 from .chat_manager import ChatManager
-from config import bot_config_manager
 from bot.models import BotConfig
+from config import bot_service
 
 class ChatApp:
     def __init__(self, bot_config: Optional[BotConfig] = None, chat_id: Optional[str] = None, verbose: bool = False):
@@ -26,7 +26,7 @@ class ChatApp:
 
         # Use default bot config if not provided
         if not bot_config:
-            bot_config = bot_config_manager.get_config()
+            bot_config = bot_service.get_config()
 
         # Initialize managers
         display_manager = DisplayManager()
@@ -56,7 +56,7 @@ async def main():
             msvcrt.setmode(sys.stdin.fileno(), os.O_BINARY)
             msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)
 
-        app = ChatApp(bot_config=bot_config_manager.get_config(), verbose=True)
+        app = ChatApp(bot_config=bot_service.get_config(), verbose=True)
         await app.chat()
     except KeyboardInterrupt:
         # Exit silently on Ctrl+C

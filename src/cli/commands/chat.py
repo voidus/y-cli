@@ -6,7 +6,7 @@ from rich.console import Console
 
 from chat.app import ChatApp
 from cli.display_manager import custom_theme
-from config import config, bot_config_manager
+from config import bot_service
 
 @click.command()
 @click.option('--chat-id', '-c', help='Continue from an existing chat')
@@ -25,7 +25,7 @@ def chat(chat_id: Optional[str], latest: bool, model: Optional[str], verbose: bo
     console = Console(theme=custom_theme)
 
     # Get bot config
-    bot_config = bot_config_manager.get_config(bot or "default")
+    bot_config = bot_service.get_config(bot or "default")
     
     # Use command line model if specified, otherwise use bot config model
     bot_config.model = model or bot_config.model

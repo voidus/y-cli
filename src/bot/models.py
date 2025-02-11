@@ -1,20 +1,15 @@
 """Bot configuration models."""
 
 from dataclasses import dataclass, asdict, field
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
-DEFAULT_OPENROUTER_SETTINGS = {
+DEFAULT_OPENROUTER_CONFIG = {
     "provider": {
         "sort": "throughput"
     }
 }
 
-DEFAULT_MCP_SERVER_SETTINGS = {
-    "todo": {
-        "command": "uvx",
-        "args": ["mcp-todo"]
-    }
-}
+DEFAULT_MCP_SERVER_CONFIG = ["todo"]
 
 @dataclass
 class BotConfig:
@@ -25,7 +20,7 @@ class BotConfig:
     print_speed: int = 60
     description: Optional[str] = None
     openrouter_config: Optional[Dict] = None
-    mcp_server_settings: Optional[Dict] = None
+    mcp_servers: Optional[List[str]] = None
     max_tokens: Optional[int] = None
     custom_api_path: Optional[str] = None
 

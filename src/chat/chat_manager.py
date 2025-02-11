@@ -7,8 +7,8 @@ from .repository import ChatRepository
 from .service import ChatService
 from cli.display_manager import DisplayManager
 from cli.input_manager import InputManager
-from mcp_setting.mcp_manager import MCPManager
-from mcp_setting.system import get_system_prompt
+from mcp_server.mcp_manager import MCPManager
+from mcp_server.system import get_system_prompt
 from .openrouter_manager import OpenRouterManager
 from bot import BotConfig
 
@@ -142,9 +142,9 @@ class ChatManager:
         """Run the chat session"""
         async with AsyncExitStack() as exit_stack:
             try:
-                if self.bot_config.mcp_server_settings:
+                if self.bot_config.mcp_servers:
                     # Initialize MCP and system prompt if MCP server settings exist
-                    await self.mcp_manager.connect_to_servers(self.bot_config.mcp_server_settings, exit_stack)
+                    await self.mcp_manager.connect_to_servers(self.bot_config.mcp_servers, exit_stack)
                     self.system_prompt = await get_system_prompt(self.mcp_manager)
 
                 if self.verbose:
