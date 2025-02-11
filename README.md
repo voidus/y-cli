@@ -99,6 +99,10 @@ y-cli [OPTIONS] COMMAND [ARGS]...
   - `add`     Add a new bot configuration
   - `list`    List all configured bots
   - `delete`  Delete a bot configuration
+- `mcp`    Manage MCP server configurations:
+  - `add`     Add a new MCP server configuration
+  - `list`    List all configured MCP servers
+  - `delete`  Delete an MCP server configuration
 
 ### Options
 - `--help`  Show help message and exit
