@@ -26,6 +26,8 @@ class BotConfig:
     description: Optional[str] = None
     openrouter_config: Optional[Dict] = None
     mcp_server_settings: Optional[Dict] = None
+    max_tokens: Optional[int] = None
+    custom_api_path: Optional[str] = None
 
     @classmethod
     def from_dict(cls, data: Dict) -> 'BotConfig':
