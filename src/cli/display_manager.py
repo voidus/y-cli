@@ -116,7 +116,7 @@ class DisplayManager:
                 all_reasoning_content += reasoning_content
                 collected_reasoning_content.append(reasoning_content)
 
-            if is_reasoning and not reasoning_content:
+            if is_reasoning and not reasoning_content and content:
                 new_content += "> summary\n"
                 is_reasoning = False
 

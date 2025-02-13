@@ -1,8 +1,9 @@
 name: Publish to PyPI
 
 on:
-  release:
-    types: [created]
+  push:
+    tags:
+      - 'v*'  # Matches v1.0.0, v2.1.0, etc.
 
 jobs:
   deploy:
