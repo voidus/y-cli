@@ -54,6 +54,7 @@ class ChatManager:
 
         # Initialize chat state
         self.current_chat: Optional[Chat] = None
+        self.external_id: Optional[str] = None
         self.messages: List[Message] = []
         self.system_prompt: Optional[str] = None
 
@@ -90,7 +91,9 @@ class ChatManager:
         self.display_manager.display_message_panel(user_message, index=len(self.messages) - 1)
         self.persist_chat()
 
-        assistant_message = await self.provider.call_chat_completions(self.messages, self.system_prompt)
+        assistant_message, external_id = await self.provider.call_chat_completions(self.messages, self.current_chat, self.system_prompt)
+        if external_id:
+            self.external_id = external_id
         await self.process_assistant_message(assistant_message)
         self.persist_chat()
 
@@ -138,9 +141,11 @@ class ChatManager:
     def persist_chat(self):
         """Persist current chat state"""
         if not self.current_chat:
-            self.current_chat = self.service.create_chat(self.messages)
+            # Create new chat without external_id since this is a fresh chat
+            self.current_chat = self.service.create_chat(self.messages, self.external_id)
         else:
-            self.current_chat = self.service.update_chat(self.current_chat.id, self.messages)
+            # Update existing chat - external_id will be preserved automatically
+            self.current_chat = self.service.update_chat(self.current_chat.id, self.messages, self.external_id)
 
     async def run(self):
         """Run the chat session"""

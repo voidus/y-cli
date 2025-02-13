@@ -2,7 +2,7 @@ from typing import Optional
 from chat.models import Message
 from util import get_iso8601_timestamp, get_unix_timestamp
 
-def create_message(role: str, content: str, reasoning_content: Optional[str] = None, provider: Optional[str] = None, model: Optional[str] = None) -> Message:
+def create_message(role: str, content: str, reasoning_content: Optional[str] = None, provider: Optional[str] = None, model: Optional[str] = None, id: Optional[str] = None) -> Message:
     """Create a Message object with optional fields.
     
     Args:
@@ -11,19 +11,17 @@ def create_message(role: str, content: str, reasoning_content: Optional[str] = N
         reasoning_content: Optional reasoning content
         provider: Optional provider name
         model: Optional model name
+        id: Optional message ID
         
     Returns:
         Message: Message object with role, content, and optional fields
     """
     message_data = {
         "role": role,
-        "content": content
-    }
-
-    message_data.update({
+        "content": content,
         "timestamp": get_iso8601_timestamp(),
         "unix_timestamp": get_unix_timestamp()
-    })
+    }
 
     if reasoning_content is not None:
         message_data["reasoning_content"] = reasoning_content
@@ -33,5 +31,8 @@ def create_message(role: str, content: str, reasoning_content: Optional[str] = N
 
     if model is not None:
         message_data["model"] = model
+
+    if id is not None:
+        message_data["id"] = id
 
     return Message.from_dict(message_data)

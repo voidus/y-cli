@@ -43,24 +43,34 @@ class ChatService:
         """Get a specific chat by ID"""
         return self.repository.get_chat(chat_id)
 
-    def create_chat(self, messages: List[Message]) -> Chat:
-        """Create a new chat with messages"""
+    def create_chat(self, messages: List[Message], external_id: Optional[str] = None) -> Chat:
+        """Create a new chat with messages and optional external ID
+
+        Args:
+            messages: List of messages to include in the chat
+            external_id: Optional external identifier for the chat
+
+        Returns:
+            The created chat object
+        """
         timestamp = self._create_timestamp()
         chat = Chat(
             id=self._generate_id(),
             create_time=timestamp,
             update_time=timestamp,
-            messages=[msg for msg in messages if msg.role != 'system']
+            messages=[msg for msg in messages if msg.role != 'system'],
+            external_id=external_id
         )
         return self.repository.add_chat(chat)
 
-    def update_chat(self, chat_id: str, messages: List[Message]) -> Chat:
+    def update_chat(self, chat_id: str, messages: List[Message], external_id: Optional[str] = None) -> Chat:
         """Update an existing chat's messages"""
         chat = self.get_chat(chat_id)
         if not chat:
             raise ValueError(f"Chat with id {chat_id} not found")
 
         chat.update_messages(messages)
+        chat.external_id = external_id
         return self.repository.update_chat(chat)
 
     def delete_chat(self, chat_id: str) -> bool:

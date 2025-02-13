@@ -4,6 +4,18 @@ from config import config, CONFIG_FILE
 from bot import BotConfig
 from config import bot_service
 
+# Default model choices with index mapping and descriptions
+MODEL_CHOICES = {
+    "1": {
+        "name": "anthropic/claude-3.5-sonnet",
+        "description": "Best code implementation & tool use"
+    },
+    "2": {
+        "name": "google/gemini-2.0-flash-001",
+        "description": "Fast & strong all-rounder"
+    }
+}
+
 def print_config_info():
     """Print configuration information and available settings."""
     click.echo(f"\n{click.style('Configuration saved to:', fg='green')}\n{click.style(CONFIG_FILE, fg='cyan')}")
@@ -52,12 +64,27 @@ def init():
         show_default=False
     )
 
-    # Create new config with updated API key
+    # Display model choices with descriptions
+    click.echo("\nSet default model:")
+    for idx, model_info in MODEL_CHOICES.items():
+        click.echo(f"{idx}. {click.style(model_info['name'], fg='cyan')} - {click.style(model_info['description'], fg='yellow')}")
+
+    # Prompt for model selection by index
+    model_idx = click.prompt(
+        "\nSelect the model to use (1-2)",
+        type=click.Choice(["1", "2"]),
+        default="1"
+    )
+    
+    # Get the selected model name
+    model = MODEL_CHOICES[model_idx]["name"]
+
+    # Create new config with updated API key and model
     new_config = BotConfig(
         name="default",
         api_key=api_key,
         base_url=default_config.base_url,
-        model=default_config.model,
+        model=model,
         print_speed=default_config.print_speed,
         description=default_config.description,
         mcp_servers=default_config.mcp_servers

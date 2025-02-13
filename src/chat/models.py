@@ -82,6 +82,7 @@ class Chat:
     create_time: str
     update_time: str
     messages: List[Message]
+    external_id: Optional[str] = None
 
     @classmethod
     def from_dict(cls, data: Dict) -> 'Chat':
@@ -92,16 +93,20 @@ class Chat:
             messages=sorted(
                 [Message.from_dict(m) for m in data['messages'] if m['role'] != "system"],
                 key=lambda x: (x.unix_timestamp)
-            )
+            ),
+            external_id=data.get('external_id')
         )
 
     def to_dict(self) -> Dict:
-        return {
+        result = {
             'create_time': self.create_time,
             'id': self.id,
             'update_time': self.update_time,
             'messages': [m.to_dict() for m in self.messages]
         }
+        if self.external_id is not None:
+            result['external_id'] = self.external_id
+        return result
 
     def update_messages(self, messages: List[Message]) -> None:
         # Filter out system messages and sort the remaining ones by timestamp
