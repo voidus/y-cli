@@ -29,7 +29,7 @@ class ChatApp:
             bot_config = bot_service.get_config()
 
         # Initialize managers
-        display_manager = DisplayManager()
+        display_manager = DisplayManager(bot_config)
         input_manager = InputManager(display_manager.console)
         mcp_manager = MCPManager(display_manager.console)
         openrouter_manager = OpenRouterManager(bot_config)

@@ -4,6 +4,7 @@ import asyncio
 from typing import List, Tuple, Optional
 from chat.models import Message
 from config import config
+from bot.models import BotConfig
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
@@ -47,9 +48,9 @@ class StreamBuffer:
         return self.last_position < len(self.buffer)
 
 class DisplayManager:
-    def __init__(self):
+    def __init__(self, bot_config: Optional[BotConfig] = None):
         self.console = Console(theme=custom_theme)
-        self.max_chars_per_second = config.get("max_chars_per_second", 30)
+        self.max_chars_per_second = bot_config.print_speed if bot_config and bot_config.print_speed else 60
 
     def display_message_panel(self, message: Message, index: Optional[int] = None):
         """Display a message in a panel with role-colored borders.
