@@ -47,6 +47,9 @@ class OpenAIFormatProvider(BaseProvider, DisplayManagerMixin):
             msg_dict = msg.to_dict()
             if isinstance(msg_dict["content"], list):
                 msg_dict["content"] = [dict(part) for part in msg_dict["content"]]
+            # Remove timestamp fields, otherwise likely unsupported_country_region_territory
+            msg_dict.pop("timestamp", None)
+            msg_dict.pop("unix_timestamp", None)
             prepared_messages.append(msg_dict)
 
         # Find last user message
@@ -93,6 +96,8 @@ class OpenAIFormatProvider(BaseProvider, DisplayManagerMixin):
             body["provider"] = self.bot_config.openrouter_config["provider"]
         if self.bot_config.max_tokens:
             body["max_tokens"] = self.bot_config.max_tokens
+        if self.bot_config.reasoning_effort:
+            body["reasoning_effort"] = self.bot_config.reasoning_effort
         try:
             async with httpx.AsyncClient(
                 base_url=self.bot_config.base_url,
@@ -152,7 +157,8 @@ class OpenAIFormatProvider(BaseProvider, DisplayManagerMixin):
                         content_full,
                         reasoning_content=reasoning_content_full,
                         provider=provider if provider is not None else self.bot_config.name,
-                        model=model
+                        model=model,
+                        reasoning_effort=self.bot_config.reasoning_effort if self.bot_config.reasoning_effort else None
                     )
                     return assistant_message, None
 

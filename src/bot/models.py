@@ -24,6 +24,7 @@ class BotConfig:
     mcp_servers: Optional[List[str]] = None
     max_tokens: Optional[int] = None
     custom_api_path: Optional[str] = None
+    reasoning_effort: Optional[str] = None
 
     @classmethod
     def from_dict(cls, data: Dict) -> 'BotConfig':
