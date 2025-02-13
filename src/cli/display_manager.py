@@ -66,7 +66,7 @@ class DisplayManager:
         # Add model/provider info if available
         model_info = ""
         if message.model:
-            provider = f" [{message.provider}]" if message.provider else ""
+            provider = f" via {message.provider}" if message.provider else ""
             model_info = f" [dim][{message.model}{provider}][/dim]"
 
         # Extract content text from structured content if needed

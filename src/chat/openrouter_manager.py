@@ -189,7 +189,7 @@ class OpenRouterManager:
                         "assistant",
                         content_full,
                         reasoning_content=reasoning_content_full,
-                        provider=provider,
+                        provider=provider if provider is not None else self.bot_config.name,
                         model=model
                     )
                     return assistant_message
