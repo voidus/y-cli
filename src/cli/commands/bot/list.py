@@ -33,9 +33,10 @@ def bot_list(verbose: bool = False):
         "Base URL": 0.15,
         "Model": 0.15,
         "Print Speed": 0.08,
-        "Description": 0.17,
+        "Description": 0.12,
         "OpenRouter Config": 0.1,
-        "MCP Servers": 0.1
+        "MCP Servers": 0.1,
+        "Reasoning Effort": 0.05
     }
     
     # Calculate actual column widths
@@ -44,7 +45,7 @@ def bot_list(verbose: bool = False):
     
     # Prepare table data with truncated values
     table_data = []
-    headers = ["Name", "API Key", "API Type", "Base URL", "Model", "Print Speed", "Description", "OpenRouter Config", "MCP Servers"]
+    headers = ["Name", "API Key", "API Type", "Base URL", "Model", "Print Speed", "Description", "OpenRouter Config", "MCP Servers", "Reasoning Effort"]
     
     for config in configs:
         table_data.append([
@@ -56,7 +57,8 @@ def bot_list(verbose: bool = False):
             truncate_text(str(config.print_speed), col_widths["Print Speed"]),
             truncate_text(config.description or "N/A", col_widths["Description"]),
             "Yes" if config.openrouter_config else "No",
-            truncate_text(", ".join(config.mcp_servers) if config.mcp_servers else "No", col_widths["MCP Servers"])
+            truncate_text(", ".join(config.mcp_servers) if config.mcp_servers else "No", col_widths["MCP Servers"]),
+            truncate_text(config.reasoning_effort or "N/A", col_widths["Reasoning Effort"])
         ])
     click.echo(tabulate(
         table_data,
