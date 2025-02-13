@@ -139,7 +139,7 @@ class OpenRouterManager:
                     "POST",
                     self.bot_config.custom_api_path if self.bot_config.custom_api_path else "/chat/completions",
                     headers={
-                        # "HTTP-Referer": "https://luohy15.com",
+                        "HTTP-Referer": "https://luohy15.com",
                         'X-Title': 'y-cli',
                         "Authorization": f"Bearer {self.bot_config.api_key}",
                         "Content-Type": "application/json",

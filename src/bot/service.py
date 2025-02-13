@@ -23,20 +23,16 @@ class BotService:
         """List all bot configs."""
         return self.repository.list_configs()
 
-    def get_config(self, name: str = "default") -> BotConfig:
+    def get_config(self, name: str = "default") -> Optional[BotConfig]:
         """Get a bot config by name.
         
         Args:
             name: Name of the config to retrieve, defaults to "default"
             
         Returns:
-            BotConfig: The requested config or default config if not found
+            Optional[BotConfig]: The requested config or None if not found
         """
-        config = self.repository.get_config(name)
-        if not config:
-            self._ensure_default_config()
-            config = self.repository.get_config("default")
-        return config
+        return self.repository.get_config(name)
 
     def add_config(self, config: BotConfig) -> BotConfig:
         """Add a new bot config or update existing one."""
