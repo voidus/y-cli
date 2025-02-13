@@ -1,59 +1,22 @@
-from typing import List, Dict, Optional, AsyncGenerator, Union
+from typing import List, Dict, Optional, AsyncGenerator
+from .base_provider import BaseProvider
+from .display_manager_mixin import DisplayManagerMixin
 import json
 from types import SimpleNamespace
 import httpx
-from cli.display_manager import DisplayManager
-from util import get_iso8601_timestamp, get_unix_timestamp
 from chat.models import Message
 from bot.models import BotConfig
+from ..utils.message_utils import create_message
 
-class OpenRouterManager:
+class OpenAIFormatProvider(BaseProvider, DisplayManagerMixin):
     def __init__(self, bot_config: BotConfig):
         """Initialize OpenRouter settings.
 
         Args:
             bot_config: Bot configuration containing API settings
         """
+        DisplayManagerMixin.__init__(self)
         self.bot_config = bot_config
-        self.display_manager = None
-
-    def set_display_manager(self, display_manager: DisplayManager):
-        """Set the display manager for streaming responses"""
-        self.display_manager = display_manager
-
-    def create_message(self, role: str, content: str, reasoning_content: Optional[str] = None, provider: Optional[str] = None, model: Optional[str] = None) -> Message:
-        """Create a Message object with optional timestamps, provider, and model.
-
-        Args:
-            role: Message role (user/assistant/system)
-            content: Message content
-            reasoning_content: Optional reasoning content
-            provider: Optional provider of the message
-            model: Optional model used to generate the message
-
-        Returns:
-            Message: Message object with role, content, and optional fields
-        """
-        message_data = {
-            "role": role,
-            "content": content
-        }
-
-        message_data.update({
-            "timestamp": get_iso8601_timestamp(),
-            "unix_timestamp": get_unix_timestamp()
-        })
-
-        if reasoning_content is not None:
-            message_data["reasoning_content"] = reasoning_content
-
-        if provider is not None:
-            message_data["provider"] = provider
-
-        if model is not None:
-            message_data["model"] = model
-
-        return Message.from_dict(message_data)
 
     def prepare_messages_for_completion(self, messages: List[Message], system_prompt: Optional[str] = None) -> List[Dict]:
         """Prepare messages for completion by adding system message and cache_control.
@@ -68,7 +31,7 @@ class OpenRouterManager:
         # Create new list starting with system message if provided
         prepared_messages = []
         if system_prompt:
-            system_message = self.create_message("system", system_prompt)
+            system_message = create_message("system", system_prompt)
             system_message_dict = system_message.to_dict()
             if isinstance(system_message_dict["content"], str):
                 system_message_dict["content"] = [{"type": "text", "text": system_message_dict["content"]}]
@@ -119,7 +82,6 @@ class OpenRouterManager:
         """
         # Prepare messages with cache_control and system message
         prepared_messages = self.prepare_messages_for_completion(messages, system_prompt)
-        # TODO: get provider config from bot config
         body = {
             "model": self.bot_config.model,
             "messages": prepared_messages,
@@ -185,7 +147,7 @@ class OpenRouterManager:
                                     continue
                     content_full, reasoning_content_full = await self.display_manager.stream_response(generate_chunks())
                     # build assistant message
-                    assistant_message = self.create_message(
+                    assistant_message = create_message(
                         "assistant",
                         content_full,
                         reasoning_content=reasoning_content_full,
@@ -198,55 +160,3 @@ class OpenRouterManager:
             raise Exception(f"HTTP error getting chat response: {str(e)}")
         except Exception as e:
             raise Exception(f"Error getting chat response: {str(e)}")
-
-    def contains_tool_use(self, content: str) -> bool:
-        """Check if content contains tool use XML tags"""
-        tool_tags = [
-            "use_mcp_tool",
-            "access_mcp_resource"
-        ]
-
-        for tag in tool_tags:
-            if f"<{tag}>" in content and f"</{tag}>" in content:
-                return True
-        return False
-
-    def split_content(self, content: str) -> tuple[str, Optional[str]]:
-        """Split content into plain text and tool definition parts.
-
-        Args:
-            content: The content to split
-
-        Returns:
-            Tuple of (plain content, tool content)
-        """
-        tool_tags = [
-            "use_mcp_tool",
-            "access_mcp_resource"
-        ]
-
-        # Find the first tool tag
-        first_tag_index = len(content)
-        first_tag = None
-        for tag in tool_tags:
-            tag_start = content.find(f"<{tag}>")
-            if tag_start != -1 and tag_start < first_tag_index:
-                first_tag_index = tag_start
-                first_tag = tag
-
-        if first_tag_index < len(content) and first_tag:
-            # Find the end of the tool block
-            end_tag = f"</{first_tag}>"
-            end_index = content.find(end_tag, first_tag_index)
-            if end_index != -1:
-                end_index += len(end_tag)
-
-                # Extract tool content
-                tool_content = content[first_tag_index:end_index].strip()
-
-                # Combine content before and after tool block
-                plain_content = (content[:first_tag_index] + content[end_index:]).strip()
-
-                return plain_content, tool_content
-
-        return content.strip(), None

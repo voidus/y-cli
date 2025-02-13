@@ -67,7 +67,7 @@ class DisplayManager:
         model_info = ""
         if message.model:
             provider = f" via {message.provider}" if message.provider else ""
-            model_info = f" [dim][{message.model}{provider}][/dim]"
+            model_info = f" {message.model}{provider}"
 
         # Extract content text from structured content if needed
         content = message.content

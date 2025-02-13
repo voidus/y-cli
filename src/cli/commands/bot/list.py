@@ -29,6 +29,7 @@ def bot_list(verbose: bool = False):
     width_ratios = {
         "Name": 0.15,
         "API Key": 0.1,
+        "API Type": 0.1,
         "Base URL": 0.15,
         "Model": 0.15,
         "Print Speed": 0.08,
@@ -43,12 +44,13 @@ def bot_list(verbose: bool = False):
     
     # Prepare table data with truncated values
     table_data = []
-    headers = ["Name", "API Key", "Base URL", "Model", "Print Speed", "Description", "OpenRouter Config", "MCP Servers"]
+    headers = ["Name", "API Key", "API Type", "Base URL", "Model", "Print Speed", "Description", "OpenRouter Config", "MCP Servers"]
     
     for config in configs:
         table_data.append([
             truncate_text(config.name, col_widths["Name"]),
             truncate_text(config.api_key[:8] + "..." if config.api_key else "N/A", col_widths["API Key"]),
+            truncate_text(config.api_type or "N/A", col_widths["API Type"]),
             truncate_text(config.base_url, col_widths["Base URL"]),
             truncate_text(config.model, col_widths["Model"]),
             truncate_text(str(config.print_speed), col_widths["Print Speed"]),
