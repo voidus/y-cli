@@ -6,8 +6,12 @@ A tiny command-line interface chat application that brings AI conversations to y
 
 - 📝 All chat data stored in single JSONL files for easy access and sync
 - 💬 Interactive chat interface
-- 🤖 Support for multiple bot configurations (any base_url/api_key/model combination compatible with [OpenAI chat completion streaming format](https://platform.openai.com/docs/api-reference/chat/streaming))
-- 🤔 Deepseek-r1 reasoning content support for enhanced AI responses
+- 🤖 Support for multiple bot configurations (any base_url/api_key/model combination). Supported api format type:
+  - [OpenAI chat completion streaming format](https://platform.openai.com/docs/api-reference/chat/streaming)
+  - [Dify chat-messages streaming format](https://docs.dify.ai/guides/application-publishing/developing-with-apis)
+- 🤔 Support for reasoning model
+  - [Deepseek-r1 reasoning_content](https://api-docs.deepseek.com/guides/reasoning_model) output print
+  - [OpenAI o3-mini reasoning_effort](https://platform.openai.com/docs/guides/reasoning) configuration 
 - 🔗 MCP (Model Context Protocol) client support with multiple server configurations
 
 ## Demo
