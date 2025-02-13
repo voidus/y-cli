@@ -22,24 +22,22 @@ A tiny command-line interface chat application that brings AI conversations to y
 ### Multiple bot configurations
 ```
 ➜  ~ y-cli bot list
-Name     API Key      Base URL             Model                Print Speed    Description    OpenRouter Config    MCP Servers
--------  -----------  -------------------  -------------------  -------------  -------------  -------------------  -------------
-default  sk-or-v1...  https://gateway....  anthropic/claude...  60             N/A            Yes                  todo, tavily
-gemini   sk-or-v1...  https://gateway....  google/gemini-2....  60             N/A            Yes                  No
-ds-chat  sk-or-v1...  https://gateway....  deepseek/deepsee...  60             N/A            Yes                  No
-ds-r1    sk-or-v1...  https://gateway....  deepseek/deepsee...  60             N/A            Yes                  No
-qc-r1    QC-3cce2...  https://maas.qc-...  DeepSeek-R1          60             N/A            No                   No
+Name         API Key      API Type    Base URL                             Model                                Print Speed    Description    OpenRouter Config    MCP Servers    Reasoning Effort
+-----------  -----------  ----------  -----------------------------------  -----------------------------------  -------------  -------------  -------------------  -------------  ------------------
+default      sk-or-v1...  N/A         https://gateway.ai.cloudflare.co...  google/gemini-2.0-flash-001          200            N/A            Yes                  No             N/A
+claude       sk-or-v1...  N/A         https://gateway.ai.cloudflare.co...  anthropic/claude-3.5-sonnet:beta     60             N/A            Yes                  todo           N/A
+o3-mini      sk-or-v1...  N/A         https://gateway.ai.cloudflare.co...  openai/o3-mini                       60             N/A            Yes                  No             low
+ds-chat      sk-or-v1...  N/A         https://gateway.ai.cloudflare.co...  deepseek/deepseek-chat               100            N/A            Yes                  No             N/A
+ds-r1        sk-or-v1...  N/A         https://gateway.ai.cloudflare.co...  deepseek/deepseek-r1                 100            N/A            Yes                  tavily         N/A
+groq-r1-70b  sk-or-v1...  N/A         https://gateway.ai.cloudflare.co...  deepseek/deepseek-r1-distill-lla...  1000           N/A            Yes                  No             N/A
+dify-bot     app-2drF...  dify        https://api.dify.ai/v1                                                    60             N/A            No                   No             N/A
 ```
 
-### Reasoning content
-![r1](.github/visuals/r1.gif)
+### Reasoning model & MCP client
 
-[asciicast](https://asciinema.org/a/702204)
+![demo](.github/visuals/demo.gif)
 
-### MCP client
-![mcp](.github/visuals/mcp.gif)
-
-[asciicast](https://asciinema.org/a/702199)
+[asciicast](https://asciinema.org/a/703255)
 
 ### Multiple MCP servers
 ```
