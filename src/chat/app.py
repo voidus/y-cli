@@ -7,7 +7,9 @@ from .repository import ChatRepository
 from cli.display_manager import DisplayManager
 from cli.input_manager import InputManager
 from mcp_server.mcp_manager import MCPManager
-from .openrouter_manager import OpenRouterManager
+from .provider.base_provider import BaseProvider
+from .provider.openai_format_provider import OpenAIFormatProvider
+from .provider.dify_provider import DifyProvider
 from .chat_manager import ChatManager
 from bot.models import BotConfig
 from config import bot_service
@@ -32,13 +34,19 @@ class ChatApp:
         display_manager = DisplayManager(bot_config)
         input_manager = InputManager(display_manager.console)
         mcp_manager = MCPManager(display_manager.console)
-        openrouter_manager = OpenRouterManager(bot_config)
+        # Create provider based on api_type
+        provider: BaseProvider
+        if bot_config.api_type == "dify":
+            provider = DifyProvider(bot_config)
+        else:  # default to openai format
+            provider = OpenAIFormatProvider(bot_config)
+
         self.chat_manager = ChatManager(
             repository=repository,
             display_manager=display_manager,
             input_manager=input_manager,
             mcp_manager=mcp_manager,
-            openrouter_manager=openrouter_manager,
+            provider=provider,
             bot_config=bot_config,
             chat_id=chat_id,
             verbose=verbose

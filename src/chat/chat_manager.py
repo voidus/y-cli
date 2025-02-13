@@ -9,7 +9,11 @@ from cli.display_manager import DisplayManager
 from cli.input_manager import InputManager
 from mcp_server.mcp_manager import MCPManager
 from mcp_server.system import get_system_prompt
-from .openrouter_manager import OpenRouterManager
+from .utils.tool_utils import contains_tool_use, split_content
+from .utils.message_utils import create_message
+from .provider.base_provider import BaseProvider
+from .provider.openai_format_provider import OpenAIFormatProvider
+from .provider.dify_provider import DifyProvider
 from bot import BotConfig
 
 class ChatManager:
@@ -19,7 +23,7 @@ class ChatManager:
         display_manager: DisplayManager,
         input_manager: InputManager,
         mcp_manager: MCPManager,
-        openrouter_manager: OpenRouterManager,
+        provider: BaseProvider,
         bot_config: BotConfig,
         chat_id: Optional[str] = None,
         verbose: bool = False
@@ -31,7 +35,7 @@ class ChatManager:
             display_manager: Manager for display and UI
             input_manager: Manager for user input
             mcp_manager: Manager for MCP operations
-            openrouter_manager: Manager for OpenRouter interactions
+            provider: Chat provider for interactions
             bot_config: Bot configuration
             chat_id: Optional ID of existing chat to load
             verbose: Whether to show verbose output
@@ -42,11 +46,11 @@ class ChatManager:
         self.display_manager = display_manager
         self.input_manager = input_manager
         self.mcp_manager = mcp_manager
-        self.openrouter_manager = openrouter_manager
+        self.provider = provider
         self.verbose = verbose
 
         # Set up cross-manager references
-        self.openrouter_manager.set_display_manager(display_manager)
+        self.provider.set_display_manager(display_manager)
 
         # Initialize chat state
         self.current_chat: Optional[Chat] = None
@@ -86,7 +90,7 @@ class ChatManager:
         self.display_manager.display_message_panel(user_message, index=len(self.messages) - 1)
         self.persist_chat()
 
-        assistant_message = await self.openrouter_manager.call_chat_completions(self.messages, self.system_prompt)
+        assistant_message = await self.provider.call_chat_completions(self.messages, self.system_prompt)
         await self.process_assistant_message(assistant_message)
         self.persist_chat()
 
@@ -95,13 +99,13 @@ class ChatManager:
         # Extract content and metadata based on response type
         content = assistant_message.content
 
-        if not self.openrouter_manager.contains_tool_use(content):
+        if not contains_tool_use(content):
             self.messages.append(assistant_message)
             self.display_manager.display_message_panel(assistant_message, index=len(self.messages) - 1)
             return
 
         # Handle response with tool use
-        plain_content, tool_content = self.openrouter_manager.split_content(content)
+        plain_content, tool_content = split_content(content)
 
         # Update last assistant message with plain content
         assistant_message.content = plain_content
@@ -112,7 +116,7 @@ class ChatManager:
         if not self.get_user_confirmation(tool_content):
             no_exec_msg = "Tool execution cancelled by user."
             self.display_manager.console.print(f"\n[yellow]{no_exec_msg}[/yellow]")
-            user_message = self.openrouter_manager.create_message("user", no_exec_msg)
+            user_message = create_message("user", no_exec_msg)
             self.messages.append(user_message)
             return
 
@@ -126,7 +130,7 @@ class ChatManager:
             return
 
         # Add tool results as user message
-        user_message = self.openrouter_manager.create_message("user", tool_results)
+        user_message = create_message("user", tool_results)
 
         # Process user message and assistant response recursively
         await self.process_user_message(user_message)
@@ -172,7 +176,7 @@ class ChatManager:
                             continue
 
                     # Add user message to history
-                    user_message = self.openrouter_manager.create_message("user", user_input)
+                    user_message = create_message("user", user_input)
                     if is_multi_line:
                         # clear <<EOF line and EOF line
                         self.display_manager.clear_lines(2)
