@@ -32,6 +32,7 @@ def print_config_info():
     click.echo(f"- {click.style('mcp_servers:', fg='yellow')} Model Context Protocol settings")
     click.echo(f"- {click.style('max_tokens:', fg='yellow')} Maximum number of tokens in response")
     click.echo(f"- {click.style('custom_api_path:', fg='yellow')} Custom path for chat completion API request")
+    click.echo(f"- {click.style('reasoning_effort:', fg='yellow')} Level of reasoning effort in responses")
     
     click.echo(f"\n{click.style('MCP servers can be configured using `y-cli mcp add` with these settings:', fg='green')}")
     click.echo(f"- {click.style('name:', fg='yellow')} Name of the MCP server")
