@@ -15,6 +15,7 @@ class Message:
     timestamp: str
     unix_timestamp: int
     reasoning_content: Optional[str] = None
+    reasoning_effort: Optional[str] = None
     links: Optional[List[str]] = None
     images: Optional[List[str]] = None
     model: Optional[str] = None
@@ -40,6 +41,7 @@ class Message:
             role=data['role'],
             content=content,  # Keep original structure (str or list)
             reasoning_content=data.get('reasoning_content'),
+            reasoning_effort=data.get('reasoning_effort'),
             timestamp=data['timestamp'],
             unix_timestamp=unix_timestamp,
             provider=data.get('provider'),
@@ -64,6 +66,8 @@ class Message:
         }
         if self.reasoning_content is not None:
             result['reasoning_content'] = self.reasoning_content
+        if self.reasoning_effort is not None:
+            result['reasoning_effort'] = self.reasoning_effort
         if self.id is not None:
             result['id'] = self.id
         if self.links is not None:

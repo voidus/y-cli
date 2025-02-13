@@ -67,7 +67,8 @@ class DisplayManager:
         model_info = ""
         if message.model:
             provider = f" via {message.provider}" if message.provider else ""
-            model_info = f" {message.model}{provider}"
+            reasoning = f" (effort: {message.reasoning_effort})" if message.reasoning_effort else ""
+            model_info = f" {message.model}{provider}{reasoning}"
 
         # Extract content text from structured content if needed
         content = message.content
