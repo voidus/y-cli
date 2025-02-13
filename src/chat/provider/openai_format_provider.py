@@ -1,10 +1,10 @@
-from typing import List, Dict, Optional, AsyncGenerator
+from typing import List, Dict, Optional, AsyncGenerator, Tuple
 from .base_provider import BaseProvider
 from .display_manager_mixin import DisplayManagerMixin
 import json
 from types import SimpleNamespace
 import httpx
-from chat.models import Message
+from chat.models import Message, Chat
 from bot.models import BotConfig
 from ..utils.message_utils import create_message
 
@@ -67,7 +67,7 @@ class OpenAIFormatProvider(BaseProvider, DisplayManagerMixin):
 
         return prepared_messages
 
-    async def call_chat_completions(self, messages: List[Message], system_prompt: Optional[str] = None) -> Message:
+    async def call_chat_completions(self, messages: List[Message], chat: Optional[Chat] = None, system_prompt: Optional[str] = None) -> Tuple[Message, Optional[str]]:
         """Get a streaming chat response from OpenRouter.
 
         Args:
@@ -154,7 +154,7 @@ class OpenAIFormatProvider(BaseProvider, DisplayManagerMixin):
                         provider=provider if provider is not None else self.bot_config.name,
                         model=model
                     )
-                    return assistant_message
+                    return assistant_message, None
 
         except httpx.HTTPError as e:
             raise Exception(f"HTTP error getting chat response: {str(e)}")

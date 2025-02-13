@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional
-from chat.models import Message
+from typing import List, Optional, Tuple
+from chat.models import Message, Chat
 
 class BaseProvider(ABC):
     @abstractmethod
-    async def call_chat_completions(self, messages: List[Message], system_prompt: Optional[str] = None) -> Message:
+    async def call_chat_completions(self, messages: List[Message], chat: Optional[Chat] = None, system_prompt: Optional[str] = None) -> Tuple[Message, Optional[str]]:
         """Get a chat response from the provider.
         
         Args:
@@ -13,6 +13,7 @@ class BaseProvider(ABC):
             
         Returns:
             Message: The assistant's response message
+            external_id: Optional external ID for the chat
             
         Raises:
             Exception: If API call fails

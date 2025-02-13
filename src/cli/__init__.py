@@ -14,11 +14,11 @@ def cli():
     """Command-line interface for chat application."""
     # Skip API key check for init command and preset commands
     current_cmd = click.get_current_context().invoked_subcommand
-    if current_cmd not in ['init', 'bot', 'mcp']:
+    if current_cmd in ['chat']:
         # Check if API key is set in default bot config
         default_config = bot_service.get_config()
-        if not default_config.api_key:
-            click.echo("Error: OpenRouter API key is not set in default bot config")
+        if not default_config.api_key or not default_config.model:
+            click.echo("Error: API key or model is not set in default bot config")
             click.echo("Please set it using 'y-cli init'")
             raise click.Abort()
 

@@ -17,7 +17,7 @@ class BotConfig:
     base_url: str = "https://openrouter.ai/api/v1"
     api_key: str = ""
     api_type: Optional[str] = None
-    model: str = "anthropic/claude-3.5-sonnet:beta"
+    model: str = ""
     print_speed: int = 60
     description: Optional[str] = None
     openrouter_config: Optional[Dict] = None
