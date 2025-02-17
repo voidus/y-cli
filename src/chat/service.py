@@ -1,4 +1,3 @@
-import uuid
 from datetime import datetime
 import sys
 import os
@@ -7,7 +6,7 @@ from chat.models import Chat, Message
 from .repository import ChatRepository
 import time
 
-from util import get_iso8601_timestamp, get_unix_timestamp
+from util import get_iso8601_timestamp, get_unix_timestamp, generate_id
 from config import config
 
 IS_WINDOWS = sys.platform == 'win32'
@@ -15,10 +14,6 @@ IS_WINDOWS = sys.platform == 'win32'
 class ChatService:
     def __init__(self, repository: ChatRepository):
         self.repository = repository
-
-    def _generate_id(self) -> str:
-        """Generate a unique chat ID"""
-        return uuid.uuid4().hex[:6]
 
     def _create_timestamp(self) -> str:
         """Create an ISO format timestamp"""
@@ -43,19 +38,20 @@ class ChatService:
         """Get a specific chat by ID"""
         return self.repository.get_chat(chat_id)
 
-    def create_chat(self, messages: List[Message], external_id: Optional[str] = None) -> Chat:
+    def create_chat(self, messages: List[Message], external_id: Optional[str] = None, chat_id: Optional[str] = None) -> Chat:
         """Create a new chat with messages and optional external ID
 
         Args:
             messages: List of messages to include in the chat
             external_id: Optional external identifier for the chat
+            chat_id: Optional chat ID to use (if not provided, one will be generated)
 
         Returns:
             The created chat object
         """
         timestamp = self._create_timestamp()
         chat = Chat(
-            id=self._generate_id(),
+            id=chat_id if chat_id else generate_id(),
             create_time=timestamp,
             update_time=timestamp,
             messages=[msg for msg in messages if msg.role != 'system'],

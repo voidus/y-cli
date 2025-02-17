@@ -8,6 +8,7 @@ from .service import ChatService
 from cli.display_manager import DisplayManager
 from cli.input_manager import InputManager
 from mcp_server.mcp_manager import MCPManager
+from util import generate_id
 from mcp_server.system import get_system_prompt
 from .utils.tool_utils import contains_tool_use, split_content
 from .utils.message_utils import create_message
@@ -57,9 +58,13 @@ class ChatManager:
         self.external_id: Optional[str] = None
         self.messages: List[Message] = []
         self.system_prompt: Optional[str] = None
+        self.chat_id: Optional[str] = None
 
         if chat_id:
             self._load_chat(chat_id)
+        else:
+            # Generate new chat ID immediately
+            self.chat_id = generate_id()
 
     def _load_chat(self, chat_id: str):
         """Load an existing chat by ID"""
@@ -141,8 +146,8 @@ class ChatManager:
     def persist_chat(self):
         """Persist current chat state"""
         if not self.current_chat:
-            # Create new chat without external_id since this is a fresh chat
-            self.current_chat = self.service.create_chat(self.messages, self.external_id)
+            # Create new chat with pre-generated ID
+            self.current_chat = self.service.create_chat(self.messages, self.external_id, self.chat_id)
         else:
             # Update existing chat - external_id will be preserved automatically
             self.current_chat = self.service.update_chat(self.current_chat.id, self.messages, self.external_id)

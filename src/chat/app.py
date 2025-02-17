@@ -10,6 +10,7 @@ from mcp_server.mcp_manager import MCPManager
 from .provider.base_provider import BaseProvider
 from .provider.openai_format_provider import OpenAIFormatProvider
 from .provider.dify_provider import DifyProvider
+from .provider.topia_provider import TopiaOrchProvider
 from .chat_manager import ChatManager
 from bot.models import BotConfig
 from config import bot_service
@@ -38,6 +39,8 @@ class ChatApp:
         provider: BaseProvider
         if bot_config.api_type == "dify":
             provider = DifyProvider(bot_config)
+        elif bot_config.api_type == "topia-orch":
+            provider = TopiaOrchProvider(bot_config)
         else:  # default to openai format
             provider = OpenAIFormatProvider(bot_config)
 
