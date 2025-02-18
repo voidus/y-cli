@@ -73,7 +73,7 @@ class DisplayManager:
         # Extract content text from structured content if needed
         content = message.content
         if isinstance(content, list):
-            content = next((part['text'] for part in content if part['type'] == 'text'), '')
+            content = next((part.text for part in content if part.type == 'text'), '')
 
         # Construct display content with reasoning first
         display_content = ""

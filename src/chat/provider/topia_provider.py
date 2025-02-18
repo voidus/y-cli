@@ -53,7 +53,7 @@ class TopiaOrchProvider(BaseProvider, DisplayManagerMixin):
                 json={"appId": app_id, "appSecret": app_secret}
             )
             data = response.json()['data']
-            
+
             # Save to cache file
             cache_data = {
                 'access_token': data['access_token'],
@@ -61,7 +61,7 @@ class TopiaOrchProvider(BaseProvider, DisplayManagerMixin):
             }
             with open(self._get_token_file_path(), 'w') as f:
                 json.dump(cache_data, f)
-                
+
             return data['access_token']
 
     async def _get_valid_token(self):
@@ -85,13 +85,13 @@ class TopiaOrchProvider(BaseProvider, DisplayManagerMixin):
         user_messages = [msg for msg in messages if msg.role == "user"]
         if not user_messages:
             raise ValueError("No user messages found")
-        
+
         last_user_msg = user_messages[-1]
         content = last_user_msg.content if isinstance(last_user_msg.content, str) else " ".join(part.text for part in last_user_msg.content)
 
         # Use chat ID as appUserId if available, otherwise use a default
         app_user_id = chat.id
-        
+
         body = {
             "appUserId": app_user_id,
             "content": content,
@@ -103,16 +103,16 @@ class TopiaOrchProvider(BaseProvider, DisplayManagerMixin):
 
     async def call_chat_completions(self, messages: List[Message], chat: Optional[Chat] = None, system_prompt: Optional[str] = None) -> Tuple[Message, Optional[str]]:
         """Get a chat response from Topia.
-        
+
         Args:
             messages: List of Message objects
             chat: Optional Chat object to maintain conversation context
             system_prompt: Optional system prompt (not used in Topia)
-            
+
         Returns:
             Message: The assistant's response message
             external_id: Optional external ID for the chat
-            
+
         Raises:
             Exception: If API call fails
         """
@@ -140,11 +140,13 @@ class TopiaOrchProvider(BaseProvider, DisplayManagerMixin):
 
                     async def generate_chunks():
                         nonlocal message_id, content_full
+                        current_content = ""  # Track current content
+
                         async for line in response.aiter_lines():
                             if line.startswith("data:"):
                                 try:
                                     data = json.loads(line[5:])
-                                    
+
                                     # Handle final message with full details
                                     if "id" in data:
                                         message_id = data.get("id")
@@ -153,18 +155,25 @@ class TopiaOrchProvider(BaseProvider, DisplayManagerMixin):
 
                                     # Handle streaming content
                                     content = data.get("content", "")
-                                    if content:
-                                        chunk_data = SimpleNamespace(
-                                            choices=[SimpleNamespace(
-                                                delta=SimpleNamespace(
-                                                    content=content,
-                                                    reasoning_content=None
-                                                )
-                                            )],
-                                            model=self.bot_config.model,
-                                            provider="topia"
-                                        )
-                                        yield chunk_data
+                                    if not content:
+                                        current_content = ""  # Reset if empty
+                                    else:
+                                        # Use difference as delta
+                                        delta = content[len(current_content):]
+                                        current_content = content  # Update tracking
+
+                                        if delta:  # Only yield if there's new content
+                                            chunk_data = SimpleNamespace(
+                                                choices=[SimpleNamespace(
+                                                    delta=SimpleNamespace(
+                                                        content=delta,
+                                                        reasoning_content=None
+                                                    )
+                                                )],
+                                                model=self.bot_config.model,
+                                                provider="topia"
+                                            )
+                                            yield chunk_data
 
                                 except json.JSONDecodeError:
                                     continue
