@@ -10,7 +10,7 @@ from mcp_server.mcp_manager import MCPManager
 from .provider.base_provider import BaseProvider
 from .provider.openai_format_provider import OpenAIFormatProvider
 from .provider.dify_provider import DifyProvider
-from .provider.topia_provider import TopiaOrchProvider
+from .provider.topia_orch_provider import TopiaOrchProvider
 from .chat_manager import ChatManager
 from bot.models import BotConfig
 from config import bot_service
