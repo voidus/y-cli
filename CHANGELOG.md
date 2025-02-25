@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.10] - 2025-02-25
+
+### Added
+- Topia Orchestration Provider support
+- Memory bank documentation structure
+- Project rules documentation (.clinerules)
+- Immediate chat ID generation for better session management
+- New utility function for ID generation
+
+### Changed
+- Updated default model from claude-3.5-sonnet to claude-3.7-sonnet
+- Improved README with new features and demo visuals
+- Enhanced display manager to better handle structured content
+- Updated chat service to support pre-generated chat IDs
+
 ## [0.3.7] - 2025-02-13
 
 ### Changed
