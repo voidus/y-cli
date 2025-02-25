@@ -7,7 +7,7 @@ from config import bot_service
 # Default model choices with index mapping and descriptions
 MODEL_CHOICES = {
     "1": {
-        "name": "anthropic/claude-3.5-sonnet",
+        "name": "anthropic/claude-3.7-sonnet",
         "description": "Best code implementation & tool use"
     },
     "2": {

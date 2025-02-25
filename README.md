@@ -25,7 +25,7 @@ A tiny command-line interface chat application that brings AI conversations to y
 Name         API Key      API Type    Base URL                             Model                                Print Speed    Description    OpenRouter Config    MCP Servers    Reasoning Effort
 -----------  -----------  ----------  -----------------------------------  -----------------------------------  -------------  -------------  -------------------  -------------  ------------------
 default      sk-or-v1...  N/A         https://gateway.ai.cloudflare.co...  google/gemini-2.0-flash-001          200            N/A            Yes                  No             N/A
-claude       sk-or-v1...  N/A         https://gateway.ai.cloudflare.co...  anthropic/claude-3.5-sonnet:beta     60             N/A            Yes                  todo           N/A
+claude       sk-or-v1...  N/A         https://gateway.ai.cloudflare.co...  anthropic/claude-3.7-sonnet:beta     60             N/A            Yes                  todo           N/A
 o3-mini      sk-or-v1...  N/A         https://gateway.ai.cloudflare.co...  openai/o3-mini                       60             N/A            Yes                  No             low
 ds-chat      sk-or-v1...  N/A         https://gateway.ai.cloudflare.co...  deepseek/deepseek-chat               100            N/A            Yes                  No             N/A
 ds-r1        sk-or-v1...  N/A         https://gateway.ai.cloudflare.co...  deepseek/deepseek-r1                 100            N/A            Yes                  tavily         N/A
