@@ -15,12 +15,26 @@ def get_default_config():
         cache_dir = base_dir
         
     return {
+        # Storage configuration
+        "storage_type": "file",  # Options: "file" or "cloudflare"
+        
+        # File storage paths
         "chat_file": f"{base_dir}/chat.jsonl",
         "bot_config_file": f"{base_dir}/bot_config.jsonl",
         "mcp_config_file": f"{base_dir}/mcp_config.jsonl",
         "openrouter_import_dir": f"{base_dir}/openrouter_import",
         "openrouter_import_history": f"{base_dir}/openrouter_import_history.jsonl",
         "tmp_dir": f"{cache_dir}/tmp",
+        
+        # Cloudflare configuration
+        "cloudflare": {
+            "account_id": "",
+            "api_token": "",
+            "kv_namespace_id": "",
+            "r2_bucket_name": ""
+        },
+        
+        # Other settings
         "s3_bucket": "",
         "cloudfront_distribution_id": "",
         "proxy_host": "",

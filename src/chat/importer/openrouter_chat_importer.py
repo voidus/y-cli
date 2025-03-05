@@ -4,7 +4,7 @@ import os
 from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Optional
 from .cli.models import Chat, Message
-from repository import ChatRepository
+from chat.file_repository import FileRepository
 from .config import DATA_FILE, OPENROUTER_IMPORT_DIR, OPENROUTER_IMPORT_HISTORY
 
 def format_timestamp(ts: str) -> str:
@@ -75,7 +75,7 @@ def list_import_files() -> List[str]:
 
 def extract_new_chats(input_file: str) -> List[Chat]:
     """Convert OpenRouter export JSON to Chat objects."""
-    repo = ChatRepository(DATA_FILE)
+    repo = FileRepository()
     existing_ids = {chat.id for chat in repo._read_chats()}
     output_chats = []
     with open(input_file, 'r', encoding='utf-8') as f:
@@ -152,7 +152,7 @@ def extract_new_chats(input_file: str) -> List[Chat]:
 
 def process_import_files() -> None:
     """Process all files in import directory."""
-    repo = ChatRepository(DATA_FILE)
+    repo = FileRepository()
     existing_chats = repo._read_chats()
     processed_count = 0
     skipped_count = 0

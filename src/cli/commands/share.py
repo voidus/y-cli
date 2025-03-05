@@ -1,4 +1,5 @@
 import os
+import asyncio
 from typing import Optional
 import click
 
@@ -19,7 +20,7 @@ def share(chat_id: Optional[str], latest: bool, push: bool):
 
     # Handle --latest flag
     if latest:
-        chats = chat_app.chat_manager.service.list_chats(limit=1)
+        chats = asyncio.run(chat_app.chat_manager.service.list_chats(limit=1))
         if not chats:
             click.echo("Error: No chats found to share")
             raise click.Abort()
@@ -29,7 +30,7 @@ def share(chat_id: Optional[str], latest: bool, push: bool):
 
     try:
         # Generate HTML file
-        tmp_file = chat_app.chat_manager.service.generate_share_html(chat_id)
+        tmp_file = asyncio.run(chat_app.chat_manager.service.generate_share_html(chat_id))
 
         if push and (not config["s3_bucket"] or not config["cloudfront_distribution_id"]):
             click.echo("Error: S3 bucket and CloudFront distribution ID must be configured")

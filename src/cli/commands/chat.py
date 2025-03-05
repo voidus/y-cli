@@ -7,6 +7,7 @@ from rich.console import Console
 from chat.app import ChatApp
 from cli.display_manager import custom_theme
 from config import bot_service
+from loguru import logger
 
 @click.command()
 @click.option('--chat-id', '-c', help='Continue from an existing chat')
@@ -22,7 +23,8 @@ def chat(chat_id: Optional[str], latest: bool, model: Optional[str], verbose: bo
     If neither option is provided, starts a new chat.
     Use --bot/-b to use a specific bot name.
     """
-    console = Console(theme=custom_theme)
+    if verbose:
+        logger.info("Starting chat command")
 
     # Get bot config
     bot_config = bot_service.get_config(bot or "default")
@@ -35,7 +37,7 @@ def chat(chat_id: Optional[str], latest: bool, model: Optional[str], verbose: bo
 
     # Handle --latest flag
     if latest:
-        chats = chat_app.chat_manager.service.list_chats(limit=1)
+        chats = asyncio.run(chat_app.chat_manager.service.list_chats(limit=1))
         if not chats:
             click.echo("Error: No existing chats found")
             raise click.Abort()
@@ -45,20 +47,16 @@ def chat(chat_id: Optional[str], latest: bool, model: Optional[str], verbose: bo
 
     # Handle --chat-id flag
     elif chat_id:
-        # Verify the chat exists
-        if not chat_app.chat_manager.service.get_chat(chat_id):
-            click.echo(f"Error: Chat with ID {chat_id} not found")
-            raise click.Abort()
         # Reinitialize ChatApp with the specified chat_id
         chat_app = ChatApp(bot_config=bot_config, chat_id=chat_id, verbose=verbose)
 
     if verbose:
-        console.print(f"Using OpenRouter API Base URL: {bot_config.base_url}")
+        logger.info(f"Using OpenRouter API Base URL: {bot_config.base_url}")
         if bot:
-            console.print(f"Using bot: {bot}")
+            logger.info(f"Using bot: {bot}")
         if chat_id:
-            console.print(f"Continuing from chat {chat_id}")
+            logger.info(f"Continuing from chat {chat_id}")
         else:
-            console.print("Starting new chat")
+            logger.info("Starting new chat")
 
     asyncio.run(chat_app.chat())

@@ -14,14 +14,9 @@ dependencies = [
     "rich>=13.9.4",
     "pyperclip>=1.9.0",
     "mcp>=1.2.1",
+    "aiofiles>=24.1.0",
+    "loguru>=0.7.3",
 ]
 
 [project.scripts]
 y-cli = "cli:cli"
-
-[[tool.uv.index]]
-# Optional name for the index.
-name = "tuna"
-# Required URL for the index.
-url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple"
-default = true

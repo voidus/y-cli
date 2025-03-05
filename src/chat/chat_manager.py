@@ -16,6 +16,8 @@ from .provider.base_provider import BaseProvider
 from .provider.openai_format_provider import OpenAIFormatProvider
 from .provider.dify_provider import DifyProvider
 from bot import BotConfig
+from config import config
+from loguru import logger
 
 class ChatManager:
     def __init__(
@@ -59,16 +61,18 @@ class ChatManager:
         self.messages: List[Message] = []
         self.system_prompt: Optional[str] = None
         self.chat_id: Optional[str] = None
+        self.continue_exist = False
 
+        # Generate new chat ID immediately
         if chat_id:
-            self._load_chat(chat_id)
+            self.chat_id = chat_id
+            self.continue_exist = True
         else:
-            # Generate new chat ID immediately
             self.chat_id = generate_id()
 
-    def _load_chat(self, chat_id: str):
+    async def _load_chat(self, chat_id: str):
         """Load an existing chat by ID"""
-        existing_chat = self.service.get_chat(chat_id)
+        existing_chat = await self.service.get_chat(chat_id)
         if not existing_chat:
             self.display_manager.print_error(f"Chat {chat_id} not found")
             raise ValueError(f"Chat {chat_id} not found")
@@ -77,7 +81,7 @@ class ChatManager:
         self.current_chat = existing_chat
 
         if self.verbose:
-            self.display_manager.console.print(f"Loaded {len(self.messages)} messages from chat {chat_id}")
+            logger.info(f"Loaded {len(self.messages)} messages from chat {chat_id}")
 
     def get_user_confirmation(self, content: str) -> bool:
         """Get user confirmation before executing tool use"""
@@ -94,13 +98,12 @@ class ChatManager:
     async def process_user_message(self, user_message: Message):
         self.messages.append(user_message)
         self.display_manager.display_message_panel(user_message, index=len(self.messages) - 1)
-        self.persist_chat()
 
         assistant_message, external_id = await self.provider.call_chat_completions(self.messages, self.current_chat, self.system_prompt)
         if external_id:
             self.external_id = external_id
         await self.process_assistant_message(assistant_message)
-        self.persist_chat()
+        await self.persist_chat()
 
     async def process_assistant_message(self, assistant_message: Message):
         """Process assistant response and handle tool use recursively"""
@@ -143,19 +146,34 @@ class ChatManager:
         # Process user message and assistant response recursively
         await self.process_user_message(user_message)
 
-    def persist_chat(self):
+    async def persist_chat(self):
         """Persist current chat state"""
         if not self.current_chat:
             # Create new chat with pre-generated ID
-            self.current_chat = self.service.create_chat(self.messages, self.external_id, self.chat_id)
+            self.current_chat = await self.service.create_chat(self.messages, self.external_id, self.chat_id)
         else:
             # Update existing chat - external_id will be preserved automatically
-            self.current_chat = self.service.update_chat(self.current_chat.id, self.messages, self.external_id)
+            self.current_chat = await self.service.update_chat(self.current_chat.id, self.messages, self.external_id)
 
     async def run(self):
         """Run the chat session"""
         async with AsyncExitStack() as exit_stack:
             try:
+                if self.verbose:
+                    logger.info("Starting chat session...")
+                # if cloudflare repository, sync
+                storage_type = config.get('storage_type', 'file')
+                if storage_type == 'cloudflare':
+                    await self.service.repository._sync_from_r2_if_needed()
+                # Load chat if chat_id was provided and not already loaded
+                if self.continue_exist:
+                    await self._load_chat(self.chat_id)
+                else:
+                    pass
+                    # await self.service.repository.get_chat(None)
+                if self.verbose:
+                    logger.info("Chat loaded successfully")
+                
                 if self.bot_config.mcp_servers:
                     # Initialize MCP and system prompt if MCP server settings exist
                     await self.mcp_manager.connect_to_servers(self.bot_config.mcp_servers, exit_stack)

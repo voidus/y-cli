@@ -7,18 +7,22 @@
 - Command Line Interface
 - JSON for data storage
 - MCP (Model Context Protocol)
+- Cloudflare KV and R2 for cloud storage
 
 ### Development Tools
 - Poetry for dependency management
 - UV for package management
 - Git for version control
+- Wrangler for Cloudflare Worker deployment
 
 ### Key Dependencies
 Based on pyproject.toml and project structure:
-- Click/Typer (inferred) for CLI framework
-- Requests/HTTPX for API calls
+- Click for CLI framework
+- HTTPX for API calls
 - JSON for data serialization
 - Type hints for better code quality
+- Aiofiles for async file operations
+- Loguru for improved logging
 
 ## Development Setup
 
@@ -26,6 +30,7 @@ Based on pyproject.toml and project structure:
 - Python 3.x
 - UV package manager
 - Git
+- Cloudflare account (for cloud storage)
 
 ### Project Structure
 ```
@@ -35,11 +40,18 @@ y-cli/
 │   ├── chat/          # Chat functionality
 │   │   ├── importer/  # Chat import tools
 │   │   ├── provider/  # Chat providers
+│   │   ├── repository/     # Repository implementations
+│   │   │   ├── __init__.py # Abstract repository interface
+│   │   │   ├── factory.py  # Factory for repository selection
+│   │   │   ├── file.py     # File-based storage implementation
+│   │   │   ├── cloudflare.py  # Cloudflare storage implementation
+│   │   │   └── cloudflare_client.py  # Cloudflare API client
 │   │   └── utils/     # Chat utilities
 │   ├── cli/           # CLI implementation
 │   │   └── commands/  # Command modules
 │   └── mcp_server/    # MCP server integration
 ├── build/             # Build artifacts
+├── cloudflare-worker.js  # Cloudflare Worker for backup synchronization
 └── memory-bank/       # Project documentation
 ```
 
@@ -50,18 +62,21 @@ y-cli/
 - Memory usage
 - Storage efficiency
 - Network latency handling
+- Cloud storage synchronization
 
 ### Security
 - API key management
 - Data persistence security
 - Input validation
 - Safe error handling
+- Cloudflare API token security
 
 ### Compatibility
 - Python version compatibility
 - OS compatibility (cross-platform)
 - Chat provider API versions
 - MCP protocol versions
+- Cloudflare API compatibility
 
 ## Dependencies
 
@@ -87,6 +102,7 @@ y-cli/
 - Provider configurations
 - MCP server settings
 - Storage locations
+- Cloudflare credentials and settings
 
 ### User Configuration
 - Bot configurations
@@ -101,6 +117,7 @@ y-cli/
 - Type hints usage
 - Docstring documentation
 - Clear naming conventions
+- Async/await patterns for I/O operations
 
 ### Testing
 - Unit testing
@@ -137,10 +154,11 @@ y-cli/
 ## Monitoring & Debugging
 
 ### Logging
-- Error logging
+- Error logging with Loguru
 - Activity logging
 - Debug information
 - Performance metrics
+- Cloud storage synchronization tracking
 
 ### Debugging
 - Debug modes
@@ -155,6 +173,8 @@ y-cli/
 - New bot features
 - MCP extensions
 - Storage scaling
+- Additional cloud storage providers
+- Enhanced backup and recovery
 
 ### Maintenance
 - Code maintenance

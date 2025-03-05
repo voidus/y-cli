@@ -19,7 +19,7 @@ class ChatService:
         """Create an ISO format timestamp"""
         return get_iso8601_timestamp()
 
-    def list_chats(self, keyword: Optional[str] = None, model: Optional[str] = None,
+    async def list_chats(self, keyword: Optional[str] = None, model: Optional[str] = None,
                    provider: Optional[str] = None, limit: int = 10) -> List[Chat]:
         """List chats with optional filtering
 
@@ -32,13 +32,13 @@ class ChatService:
         Returns:
             List of chats filtered by the given criteria, sorted by creation time descending
         """
-        return self.repository.list_chats(keyword=keyword, model=model, provider=provider, limit=limit)
+        return await self.repository.list_chats(keyword=keyword, model=model, provider=provider, limit=limit)
 
-    def get_chat(self, chat_id: str) -> Optional[Chat]:
+    async def get_chat(self, chat_id: str) -> Optional[Chat]:
         """Get a specific chat by ID"""
-        return self.repository.get_chat(chat_id)
+        return await self.repository.get_chat(chat_id)
 
-    def create_chat(self, messages: List[Message], external_id: Optional[str] = None, chat_id: Optional[str] = None) -> Chat:
+    async def create_chat(self, messages: List[Message], external_id: Optional[str] = None, chat_id: Optional[str] = None) -> Chat:
         """Create a new chat with messages and optional external ID
 
         Args:
@@ -57,23 +57,23 @@ class ChatService:
             messages=[msg for msg in messages if msg.role != 'system'],
             external_id=external_id
         )
-        return self.repository.add_chat(chat)
+        return await self.repository.add_chat(chat)
 
-    def update_chat(self, chat_id: str, messages: List[Message], external_id: Optional[str] = None) -> Chat:
+    async def update_chat(self, chat_id: str, messages: List[Message], external_id: Optional[str] = None) -> Chat:
         """Update an existing chat's messages"""
-        chat = self.get_chat(chat_id)
+        chat = await self.get_chat(chat_id)
         if not chat:
             raise ValueError(f"Chat with id {chat_id} not found")
 
         chat.update_messages(messages)
         chat.external_id = external_id
-        return self.repository.update_chat(chat)
+        return await self.repository.update_chat(chat)
 
-    def delete_chat(self, chat_id: str) -> bool:
+    async def delete_chat(self, chat_id: str) -> bool:
         """Delete a chat by ID"""
-        return self.repository.delete_chat(chat_id)
+        return await self.repository.delete_chat(chat_id)
 
-    def generate_share_html(self, chat_id: str) -> str:
+    async def generate_share_html(self, chat_id: str) -> str:
         """Generate HTML file for sharing a chat using pandoc
 
         Args:
@@ -85,7 +85,7 @@ class ChatService:
         Raises:
             ValueError: If chat not found
         """
-        chat = self.get_chat(chat_id)
+        chat = await self.get_chat(chat_id)
         if not chat:
             raise ValueError(f"Chat with id {chat_id} not found")
 

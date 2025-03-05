@@ -22,13 +22,22 @@ flowchart TD
 - Used for data persistence and retrieval
 - Implemented in bot.repository, chat.repository, mcp_server.repository
 - Abstracts storage operations from business logic
-- Enables future storage backend changes
+- Enables multiple storage backend implementations
+- Concrete implementations for file and Cloudflare storage
+- Organized in dedicated repository module for better structure
+
+### Factory Pattern
+- Implemented as repository/factory.py for chat storage
+- Selects appropriate repository implementation based on configuration
+- Enables runtime storage selection
+- Provides clean abstraction for storage implementation details
 
 ### Service Layer Pattern
 - Business logic encapsulation
 - Service classes in bot.service, chat.service, mcp_server.service
 - Coordinates between repositories and providers
 - Handles complex operations and validations
+- Async methods for improved performance
 
 ### Provider Pattern
 - Abstracts external service interactions
@@ -48,8 +57,14 @@ flowchart TD
 ```mermaid
 flowchart LR
     ChatCmd[Chat Command] --> ChatSvc[Chat Service]
-    ChatSvc --> ChatRepo[Chat Repository]
+    ChatSvc --> RepoModule[Repository Module]
     ChatSvc --> ChatProv[Chat Providers]
+    
+    subgraph "Repository Module"
+        RepoModule --> RepoFactory[Factory]
+        RepoFactory --> FileRepo[File Repository]
+        RepoFactory --> CloudRepo[Cloudflare Repository]
+    end
     
     subgraph "Providers"
         ChatProv --> OpenAI[OpenAI Format]
@@ -83,16 +98,20 @@ flowchart LR
 - Clear help documentation
 
 ### Data Storage
-- File-based storage for simplicity
-- JSON format for data persistence
-- Repository abstraction for flexibility
-- Easy backup and portability
+- Abstract repository interface
+- Multiple storage implementations:
+  - File-based storage for simplicity
+  - Cloudflare KV/R2 for cloud persistence
+- JSON format for data serialization
+- Repository factory for implementation selection
+- Async operations for better performance
 
 ### Provider Integration
 - Common provider interface
 - Provider-specific implementations
 - Consistent error handling
 - Flexible configuration
+- Async communication patterns
 
 ### MCP Implementation
 - Standard protocol adherence
@@ -111,7 +130,8 @@ flowchart LR
 - Additional bot features
 - MCP server types
 - Command modules
-- Storage backends
+- Storage backends (implemented with Cloudflare)
+- Additional cloud storage providers
 
 ## Testing Strategy
 - Unit tests for core logic

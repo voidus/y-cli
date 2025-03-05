@@ -1,41 +1,45 @@
 import json
 import os
+import aiofiles
 from typing import List, Optional, Dict
 from datetime import datetime
 from chat.models import Chat, Message
 from config import config
+from . import ChatRepository
 
-class ChatRepository:
+class FileRepository(ChatRepository):
     def __init__(self):
         self.data_file = os.path.expanduser(config['chat_file'])
-        self._ensure_file_exists()
+        # Note: We don't call _ensure_file_exists() in __init__ anymore
+        # since it's async and can't be called from a synchronous __init__
 
-    def _ensure_file_exists(self) -> None:
+    async def _ensure_file_exists(self) -> None:
         """Ensure the data file exists"""
         if not os.path.exists(self.data_file):
             os.makedirs(os.path.dirname(self.data_file), exist_ok=True)
-            with open(self.data_file, 'a', encoding="utf-8") as f:
+            async with aiofiles.open(self.data_file, 'a', encoding="utf-8") as f:
                 pass
 
-    def _read_chats(self) -> List[Chat]:
+    async def _read_chats(self) -> List[Chat]:
         """Read all chats from the JSONL file"""
+        await self._ensure_file_exists()
         chats = []
         if os.path.getsize(self.data_file) > 0:
-            with open(self.data_file, 'r', encoding="utf-8") as f:
-                for line in f:
+            async with aiofiles.open(self.data_file, 'r', encoding="utf-8") as f:
+                async for line in f:
                     if line.strip():
                         chat_dict = json.loads(line)
                         chats.append(Chat.from_dict(chat_dict))
         return chats
 
-    def _write_chats(self, chats: List[Chat]) -> None:
+    async def _write_chats(self, chats: List[Chat]) -> None:
         """Write all chats to the JSONL file"""
-        with open(self.data_file, 'w', encoding="utf-8") as f:
+        await self._ensure_file_exists()
+        async with aiofiles.open(self.data_file, 'w', encoding="utf-8") as f:
             for chat in chats:
-                json.dump(chat.to_dict(), f, ensure_ascii=False)
-                f.write('\n')
+                await f.write(json.dumps(chat.to_dict(), ensure_ascii=False) + '\n')
 
-    def list_chats(self, keyword: Optional[str] = None, model: Optional[str] = None,
+    async def list_chats(self, keyword: Optional[str] = None, model: Optional[str] = None,
                    provider: Optional[str] = None, limit: int = 10) -> List[Chat]:
         """List chats with optional filtering
 
@@ -45,7 +49,7 @@ class ChatRepository:
             provider: Optional provider name to filter by
             limit: Maximum number of chats to return (default: 10)
         """
-        chats = self._read_chats()
+        chats = await self._read_chats()
 
         # Sort by create_time in descending order
         chats.sort(key=lambda x: x.create_time, reverse=True)
@@ -97,34 +101,34 @@ class ChatRepository:
 
         return chats[:limit]
 
-    def get_chat(self, chat_id: str) -> Optional[Chat]:
+    async def get_chat(self, chat_id: str) -> Optional[Chat]:
         """Get a specific chat by ID"""
-        chats = self._read_chats()
+        chats = await self._read_chats()
         return next((chat for chat in chats if chat.id == chat_id), None)
 
-    def add_chat(self, chat: Chat) -> Chat:
+    async def add_chat(self, chat: Chat) -> Chat:
         """Add a new chat"""
-        chats = self._read_chats()
+        chats = await self._read_chats()
         chats.append(chat)
-        self._write_chats(chats)
+        await self._write_chats(chats)
         return chat
 
-    def update_chat(self, chat: Chat) -> Chat:
+    async def update_chat(self, chat: Chat) -> Chat:
         """Update an existing chat"""
-        chats = self._read_chats()
+        chats = await self._read_chats()
         for i, existing_chat in enumerate(chats):
             if existing_chat.id == chat.id:
                 chats[i] = chat
-                self._write_chats(chats)
+                await self._write_chats(chats)
                 return chat
         raise ValueError(f"Chat with id {chat.id} not found")
 
-    def delete_chat(self, chat_id: str) -> bool:
+    async def delete_chat(self, chat_id: str) -> bool:
         """Delete a chat by ID"""
-        chats = self._read_chats()
+        chats = await self._read_chats()
         initial_length = len(chats)
         chats = [chat for chat in chats if chat.id != chat_id]
         if len(chats) < initial_length:
-            self._write_chats(chats)
+            await self._write_chats(chats)
             return True
         return False

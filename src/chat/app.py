@@ -3,7 +3,7 @@ import sys
 import asyncio
 from typing import Optional
 
-from .repository import ChatRepository
+from .repository.factory import get_chat_repository
 from cli.display_manager import DisplayManager
 from cli.input_manager import InputManager
 from mcp_server.mcp_manager import MCPManager
@@ -24,8 +24,8 @@ class ChatApp:
             chat_id: Optional ID of existing chat to load
             verbose: Whether to show verbose output
         """
-        # Initialize repository
-        repository = ChatRepository()
+        # Initialize repository based on configuration
+        repository = get_chat_repository()
 
         # Use default bot config if not provided
         if not bot_config:

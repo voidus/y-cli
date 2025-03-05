@@ -56,13 +56,15 @@ def list_chats(keyword: Optional[str], model: Optional[str], provider: Optional[
                 filters.append(f"provider: '{provider}'")
             click.echo(f"Applied filters: {', '.join(filters)}")
         click.echo(f"Result limit: {limit}")
+    import asyncio
+    
     chat_app = ChatApp(bot_config=bot_service.get_config())
-    chats = chat_app.chat_manager.service.list_chats(
+    chats = asyncio.run(chat_app.chat_manager.service.list_chats(
         keyword=keyword,
         model=model,
         provider=provider,
         limit=limit
-    )
+    ))
     if not chats:
         if any([keyword, model, provider]):
             filters = []
